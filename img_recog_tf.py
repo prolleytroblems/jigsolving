@@ -20,7 +20,6 @@ def parse_img(filename, type="png"):
     else: raise Exception(type)
     return image_decoded
 
-
 def normalize(img):
     """Normalize color vector and add 4th brightness component"""
     def norm_bright(x):
@@ -48,7 +47,6 @@ def compare(imga,imgb):
 
     sum=full_sum(apply_to_pixels(lambda x:compare_pixel(x[0:4],x[4:8]), imgstack))
     return sum/tf.cast(tf.shape(imgstack)[0]*tf.shape(imgstack)[1], tf.float32)
-
 
 def apply_to_pixels(function, *args):
     assert args[0].shape.ndims==3
@@ -81,6 +79,12 @@ def dataset_from_img_split(image, dims):
             pieces.append(image[y_start: y_end, x_start: x_end])
 
     return tf.data.Dataset.from_tensor_slices(pieces)
+
+def dataset_from_solution(path, dims):
+    dataset=dataset_from_img_split(parse_img(path, path.split(".")[-1]), (dims[0],dims[1]))
+    locs=[(a,b for a in range(dims[1]) for b in range(dims[2]))]
+    dataset=tf.data.Dataset.zip(dataset, tf.data.Dataset.from_tensor_slices(locs))
+    return dataset
 
 def img_write(image, name):
     tf.write_file(name+".png",tf.image.encode_png(image))
