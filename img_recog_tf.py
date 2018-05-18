@@ -89,31 +89,8 @@ def dataset_from_solution(path, dims):
 def img_write(image, name):
     tf.write_file(name+".png",tf.image.encode_png(image))
 
-
 def main():
-
-
-    db=DBConnector()
-    for dim in range(2,10):
-        for pool in range(1,8):
-
-            start=datetime.now()
-
-            dataset=dataset_from_img_split(parse_img("./puzzle.jpg","jpg"), (dim,dim)).batch(1).map(lambda x:
-                                    tf.nn.max_pool(x, [1,pool,pool,1],[1,pool,pool,1], "VALID")).map(lambda x: tf.squeeze(x, axis=0))
-            shuffleset=dataset.map(normalize)
-            finalset=tf.data.Dataset.zip((shuffleset, shuffleset.take(1).repeat())).map(lambda x,y: compare(x,y))
-            prep=(datetime.now()-start).seconds+(datetime.now()-start).microseconds/1000000
-            next=finalset.make_one_shot_iterator().get_next()
-            with tf.Session() as sess:
-                for i in range(dim*dim):
-                    sess.run(next)
-
-            end=(datetime.now()-start).seconds+(datetime.now()-start).microseconds/1000000
-            #db.insert({"pooling":pool, "pieces":dim*dim, "runtime":end, "preptime":prep})
-
-
-
+    pass
 
 
 if __name__ == '__main__':
