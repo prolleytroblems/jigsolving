@@ -54,7 +54,7 @@ def apply_to_pixels(function, *args):
 
 def pool(dataset, pooling):
     return dataset.batch(1).map(lambda x:
-                            tf.nn.max_pool([1,pooling,pooling,1],[1,pooling,pooling,1],
+                            tf.nn.max_pool(x, [1,pooling,pooling,1],[1,pooling,pooling,1],
                             "VALID")).map(lambda x: tf.squeeze(x, axis=0))
 
 def full_sum(tensor):
@@ -82,8 +82,8 @@ def dataset_from_img_split(image, dims):
 
 def dataset_from_solution(path, dims):
     dataset=dataset_from_img_split(parse_img(path, path.split(".")[-1]), (dims[0],dims[1]))
-    locs=[(a,b for a in range(dims[1]) for b in range(dims[2]))]
-    dataset=tf.data.Dataset.zip(dataset, tf.data.Dataset.from_tensor_slices(locs))
+    locs=[(a,b) for a in range(dims[1]) for b in range(dims[0])]
+    dataset=tf.data.Dataset.zip((dataset, tf.data.Dataset.from_tensor_slices(locs)))
     return dataset
 
 def img_write(image, name):
