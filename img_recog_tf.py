@@ -97,17 +97,22 @@ def img_write(name, image, format="png"):
     else:
         raise Exception("writing error")
 
-def locate_one_piece(piece_dataset, solution_dataset):
+def locate_one_piece(piece_dataset, solution_dataset, session=None):
     comparison_set=tf.data.Dataset.zip((solution_dataset, piece_dataset))
     comparison_set=comparison_set.map(lambda x, y: (compare(normalize(x[0]),normalize(y)), x[1]))
     next=comparison_set.make_one_shot_iterator().get_next()
+
+    if tf.get_default_session()==None:
+        sess=tf.Session()
+    else:
+        sess=tf.get_default_session()
+
     results=[]
-    with tf.Session() as sess:
-        try:
-            while True:
-                results.append(sess.run(next))
-        except tf.errors.OutOfRangeError:
-            pass
+    try:
+        while True:
+            results.append(sess.run(next))
+    except tf.errors.OutOfRangeError:
+        pass
 
     max_result=(0, None)
     for pair in results:
