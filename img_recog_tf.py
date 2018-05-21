@@ -64,7 +64,7 @@ def full_sum(tensor):
         tensor=tf.foldl(lambda a,x: a+x, tensor)
         return full_sum(tensor)
 
-def dataset_from_img_split(image, dims):
+def img_split(image, dims):
     assert type(dims)==tuple
     pieces=[]
     height=tf.shape(image)[0]/dims[0]
@@ -78,7 +78,10 @@ def dataset_from_img_split(image, dims):
 
             pieces.append(image[y_start: y_end, x_start: x_end])
 
-    return tf.data.Dataset.from_tensor_slices(pieces)
+    return pieces
+
+def dataset_from_img_split(image, dims):
+    return tf.data.Dataset.from_tensor_slices(img_split(image, dims))
 
 def dataset_from_solution(path, dims):
     dataset=dataset_from_img_split(parse_img(path, path.split(".")[-1]), (dims[0],dims[1]))
