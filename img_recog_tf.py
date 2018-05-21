@@ -121,6 +121,28 @@ def locate_one_piece(piece_dataset, solution_dataset, session=None):
             max_result=pair
     return max_result[1]
 
+def locate_pieces(pieces, solution_dataset, **params):
+    """Returns a list of piece+location pairs. Receives a list of piece images, and the solution dataset"""
+    if params["pooling"]==None:
+        params["pooling"]=3
+        print("No pooling parameter received: defaulting to 3.")
+    else:
+        pooling=params["pooling"]
+
+    solution_dataset=solution_dataset.batch(1).map(lambda x,y:
+                            (tf.nn.max_pool(x, [1,pooling,pooling,1],[1,pooling,pooling,1],
+                            "VALID"),y)).map(lambda x, y: (tf.squeeze(x, axis=0), y))
+
+    located_pieces=[]
+    sess=tf.Session()
+    with sess.as_default():
+        for piece in pieces:
+            piece_dataset=pool_set(tf.data.Dataset.from_tensors(piece), pooling).repeat()
+            location=locate_one_piece(piece_dataset, solution_dataset, sess)
+            located_pieces.append((piece, location))
+        return located_pieces
+    sess.close()
+
 def main():
     pass
 
