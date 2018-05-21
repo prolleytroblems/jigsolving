@@ -89,6 +89,25 @@ def dataset_from_solution(path, dims):
 def img_write(image, name):
     tf.write_file(name+".png",tf.image.encode_png(image))
 
+def locate_one_piece(piece_dataset, solution_dataset):
+    comparison_set=tf.data.Dataset.zip((solution_dataset, piece_dataset))
+    comparison_set=comparison_set.map(lambda x, y: (compare(normalize(x[0]),normalize(y)), x[1]))
+    next=comparison_set.make_one_shot_iterator().get_next()
+    results=[]
+    with tf.Session() as sess:
+        try:
+            while True:
+                results.append(sess.run(next))
+        except tf.errors.OutOfRangeError:
+            pass
+
+    max_result=(0, None)
+    for pair in results:
+        print(pair)
+        if pair[0]>max_result[0]:
+            max_result=pair
+    return max_result[1]
+
 def main():
     pass
 
