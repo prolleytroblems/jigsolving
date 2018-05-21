@@ -52,7 +52,8 @@ def apply_to_pixels(function, *args):
     assert args[0].shape.ndims==3
     return tf.map_fn(lambda line: tf.map_fn(function, line), args[0])
 
-def pool(dataset, pooling):
+def pool_set(dataset, pooling):
+    """Apply pooling to dataset of images."""
     return dataset.batch(1).map(lambda x:
                             tf.nn.max_pool(x, [1,pooling,pooling,1],[1,pooling,pooling,1],
                             "VALID")).map(lambda x: tf.squeeze(x, axis=0))
