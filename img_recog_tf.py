@@ -86,8 +86,12 @@ def dataset_from_solution(path, dims):
     dataset=tf.data.Dataset.zip((dataset, tf.data.Dataset.from_tensor_slices(locs)))
     return dataset
 
-def img_write(image, name):
-    tf.write_file(name+".png",tf.image.encode_png(image))
+def img_write(name, image, format="png"):
+    if format=="png":
+        name=name+".png"
+        tf.write_file(name, tf.image.encode_png(image))
+    else:
+        raise Exception("writing error")
 
 def locate_one_piece(piece_dataset, solution_dataset):
     comparison_set=tf.data.Dataset.zip((solution_dataset, piece_dataset))
