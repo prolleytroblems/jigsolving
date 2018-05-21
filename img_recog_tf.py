@@ -106,17 +106,14 @@ def locate_one_piece(piece_dataset, solution_dataset, session=None):
         sess=tf.Session()
     else:
         sess=tf.get_default_session()
-
     results=[]
     try:
         while True:
             results.append(sess.run(next))
     except tf.errors.OutOfRangeError:
         pass
-
     max_result=(0, None)
     for pair in results:
-        print(pair)
         if pair[0]>max_result[0]:
             max_result=pair
     return max_result[1]
@@ -131,15 +128,14 @@ def locate_pieces(pieces, solution_dataset, **params):
 
     solution_dataset=solution_dataset.batch(1).map(lambda x,y:
                             (tf.nn.max_pool(x, [1,pooling,pooling,1],[1,pooling,pooling,1],
-                            "VALID"),y)).map(lambda x, y: (tf.squeeze(x, axis=0), y))
-
+                            "VALID"),y)).map(lambda x, y: (tf.squeeze(x, axis=0), tf.squeeze(y, axis=0)))
     located_pieces=[]
     sess=tf.Session()
     with sess.as_default():
         for piece in pieces:
             piece_dataset=pool_set(tf.data.Dataset.from_tensors(piece), pooling).repeat()
             location=locate_one_piece(piece_dataset, solution_dataset, sess)
-            located_pieces.append((piece, location))
+            located_pieces.append((sess.run(piece), location))
         return located_pieces
     sess.close()
 
