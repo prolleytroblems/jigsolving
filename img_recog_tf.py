@@ -65,6 +65,28 @@ def full_sum(tensor):
         tensor=tf.foldl(lambda a,x: a+x, tensor)
         return full_sum(tensor)
 
+def brg_to_rgb(image):
+    b,g,r=np.split(image, 3, axis=2)
+    return np.concatenate((r,g,b), axis=2)
+
+def img_split_cpu(image_path, dims):
+    assert type(dims)==tuple
+    image=brg_to_rgb(cv2.imread(image_path, 1))
+
+    pieces=[]
+    height=image.shape[0]/dims[0]
+    width=image.shape[1]/dims[1]
+    for y_split in range(dims[0]):
+        for x_split in range(dims[1]):
+            x_start=int(x_split*width)
+            x_end=x_start+int(width)
+            y_start=int(y_split*height)
+            y_end=y_start+int(height)
+
+            pieces.append(image[y_start: y_end, x_start: x_end])
+
+    return pieces
+
 def img_split(image, dims):
     assert type(dims)==tuple
     pieces=[]
