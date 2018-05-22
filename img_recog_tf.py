@@ -83,8 +83,7 @@ def img_split_cpu(image_path, dims):
             y_start=int(y_split*height)
             y_end=y_start+int(height)
 
-            pieces.append(image[y_start: y_end, x_start: x_end])
-
+            pieces.append(np.array(image[y_start: y_end, x_start: x_end]))
     return pieces
 
 def img_split(image, dims):
