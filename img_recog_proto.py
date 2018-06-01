@@ -1,7 +1,9 @@
 import numpy as np
+from numpy.linalg import norm
 import cv2
 from random import normalvariate as nrand
-from numpy.linalg import norm
+from random import sample
+
 
 def openimg(path):
     return bgr_to_rgb(cv2.imread(path, 1))
@@ -39,8 +41,12 @@ def img_split_cpu(image_or_path, dims):
 
 def shuffle(image, dims):
     """Shuffle the image into equal rectangular pieces"""
-    img_split_cpu(image, dims)
+    return sample(img_split_cpu(image, dims), dims[0]*dims[1])
 
+def reassemble(pieces, dims):
+    """Reassembles ordered piece images into a full image"""
+    image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
+    return image
 
 def b_distort(image, delta):
     """Randomly alter the brightness of each pixel of an image following a normal distribution."""
@@ -61,15 +67,18 @@ def b_distort(image, delta):
 
 def s_distort(image, delta):
     """Randomly alter the shape of an image"""
+    pass
 
 def ub_distribution(image, delta, fixed_points):
     """Randomly alter the brightness of an image as a whole."""
-
+    pass
 
 def c_distort(image, delta):
     """Randomly alter the color vector of each pixel of an image following a normal distribution."""
+    pass
 
 def ub_distribution(image, delta, fixed_points):
     """Randomly alter the color of an image as a whole."""
+    pass
 
-writeimg("distorted.jpg", b_distort(openimg("puzzle.jpg"), 10))
+if __name__=="__main__":
