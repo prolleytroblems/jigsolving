@@ -8,10 +8,14 @@ import cv2
 
 
 class GUI(Tk):
+    """A simple gui for prototyping"""
 
     def __init__(self, functions):
+        """Two functions as input, in a 2-element dictionary. The first returns a shuffled set of pieces.
+        The second returns the full solved image or sorted set of pieces. Neither receive any input."""
         super().__init__()
         self.open(functions)
+        self.path("puzzle.jpg")
         self.mainloop()
 
     def open(self, functions):
@@ -47,11 +51,10 @@ class GUI(Tk):
 
         shufflebutton=ttk.Button(buttonframe, text="Shuffle", default="active")
         shufflebutton.grid(column=0, row=1, pady=10)
-        shufflebutton.configure(command=lambda x: functions[0](x))
-        shufflebutton.configure(command=lambda: print(2))
+        shufflebutton.configure(command=lambda: plot_image(functions["shuffle"](self.path)))
 
         solvebutton=ttk.Button(buttonframe, text="Solve")
-        solvebutton.configure(command=lambda: self.plot_image(openimg('puzzle.jpg')))
+        solvebutton.configure(command=lambda: self.plot_image(functions["solve"](self.path)))
         solvebutton.grid(column=0, row=2, pady=10)
 
         buttonframe.columnconfigure(0, weight=1)
@@ -69,7 +72,6 @@ class GUI(Tk):
             images=[images]
         else:
             raise Exception("Invalid image object")
-        print(self.canvas['width'])
         center=(400, 300)
         shape=images[0].shape
         full_size_reversed=np.array((shape[1]*dims[1], shape[0]*dims[0]))
@@ -81,7 +83,5 @@ class GUI(Tk):
         for image, piece_center in zip(self.canvas.images, centers):
             id=self.canvas.create_image(piece_center[0], piece_center[1], image=image)
 
-root=GUI([lambda x:x, lambda x:x])
-
-
-#ttk.Label(mainframe, image=image).grid(column=0, row=1)
+    def get_resize_coef(self, full_size):
+        pass
