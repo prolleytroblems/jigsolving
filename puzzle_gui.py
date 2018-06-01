@@ -2,8 +2,9 @@ from tkinter import *
 from tkinter import ttk
 from PIL import Image, ImageTk
 from img_recog_tf import *
+from img_recog_proto import *
 from time import sleep
-
+import cv2
 
 
 class GUI(Tk):
@@ -11,6 +12,8 @@ class GUI(Tk):
     def __init__(self, functions):
         super().__init__()
         self.open(functions)
+        self.mainloop()
+
 
     def open(self, functions):
         self.title("Image rebuild")
@@ -43,42 +46,36 @@ class GUI(Tk):
         pathentry.configure(state="disabled")
         pathentry.grid(column=0, row=0, pady=10)
 
-        shufflebutton=ttk.Button(buttonframe, text="Shuffle")
+        shufflebutton=ttk.Button(buttonframe, text="Shuffle", default="active")
         shufflebutton.grid(column=0, row=1, pady=10)
-        shufflebutton.bind(lambda x: functions[0](x))
+        #shufflebutton.configure(command=lambda x: functions[0](x))
+        shufflebutton.configure(command=lambda: print(2))
 
         solvebutton=ttk.Button(buttonframe, text="Solve")
+        solvebutton.configure(command=lambda: self.plot_image(cv2.imread('puzzle.jpg', 1)))
         solvebutton.grid(column=0, row=2, pady=10)
-        solvebutton.bind(lambda x: function[1](x))
+
 
         buttonframe.columnconfigure(0, weight=1)
 
-
-        image_pieces=img_split_cpu('puzzle.jpg', dims)
-        shape=image_pieces[0].shape
-        full_shape=(image_pieces[0].shape[0]*dims[0], image_pieces[0].shape[1]*dims[1])
-
         self.canvas = Canvas(mainframe)
-        self.canvas.configure(height=full_shape[0], width=full_shape[1])
+        self.canvas.configure(height=600, width=800)
         self.canvas.grid(column=0, row=0, sticky=(N, W, E, S))
 
+    def plot_image(self, images, dims=(1,1)):
+        print(images.shape)
+        "plots an image or equally sized pieces of an image into a canvas object"
+        self.canvas.create_image(100, 100, image=ImageTk.PhotoImage(Image.fromarray(images)), anchor=NW)
+        if len(np.array(images.shape))==4:
+            assert dims[0]*dims[1]==len(images)
+        elif len(images.shape)==3:
+            images=[images]
+        else:
+            raise Exception("Invalid image object")
+        shape=images[0].shape
+        images=[ImageTk.PhotoImage(Image.fromarray(image)) for image in images]
 
-
-
-
-
-dims=(3,3)
-def plot(event, image_pieces, shape):
-    images=[ImageTk.PhotoImage(Image.fromarray(image)) for image in image_pieces]
-    for i, image in enumerate(images):
-        print(i%3, i//3)
-        canvas.create_image(i%3*shape[1], i//3*shape[0], image=image, anchor=NW)
-    #canvas.create_line((0, 0, 100, 100))
-    #canvas.create_image(j*shape[1], i*shape[0], image=image, anchor=NW)
-
-canvas
-
-root.mainloop()
+root=GUI([lambda x:x, lambda x:x])
 
 
 #ttk.Label(mainframe, image=image).grid(column=0, row=1)
