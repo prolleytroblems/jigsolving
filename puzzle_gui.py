@@ -2,15 +2,23 @@ from tkinter import *
 from tkinter import ttk
 from PIL import Image, ImageTk
 from img_recog_tf import *
+from img_recog_proto import *
 from time import sleep
-
+import cv2
 
 
 class GUI(Tk):
+    """A simple gui for prototyping"""
 
-    def __init__(self, functions):
+    def __init__(self, functions, dims):
+        """Two functions as input, in a 2-element dictionary. The first returns a shuffled set of pieces.
+        The second returns the full solved image or sorted set of pieces. Neither receive any input."""
         super().__init__()
+        self.images=None
         self.open(functions)
+        self.path="puzzle.jpg"
+        self.dims=dims
+        self.mainloop()
 
     def open(self, functions):
         self.title("Image rebuild")
@@ -43,42 +51,40 @@ class GUI(Tk):
         pathentry.configure(state="disabled")
         pathentry.grid(column=0, row=0, pady=10)
 
-        shufflebutton=ttk.Button(buttonframe, text="Shuffle")
+        shufflebutton=ttk.Button(buttonframe, text="Shuffle", default="active")
         shufflebutton.grid(column=0, row=1, pady=10)
-        shufflebutton.bind(lambda x: functions[0](x))
+        shufflebutton.configure(command=lambda: self.plot_image(functions["shuffle"](self.path, dims=self.dims), dims=self.dims))
 
         solvebutton=ttk.Button(buttonframe, text="Solve")
+        solvebutton.configure(command=lambda: self.plot_image(functions["solve"](self.path, self.images, dims=self.dims), dims=self.dims))
         solvebutton.grid(column=0, row=2, pady=10)
-        solvebutton.bind(lambda x: function[1](x))
 
         buttonframe.columnconfigure(0, weight=1)
 
-
-        image_pieces=img_split_cpu('puzzle.jpg', dims)
-        shape=image_pieces[0].shape
-        full_shape=(image_pieces[0].shape[0]*dims[0], image_pieces[0].shape[1]*dims[1])
-
-        self.canvas = Canvas(mainframe)
-        self.canvas.configure(height=full_shape[0], width=full_shape[1])
+        self.canvas=Canvas(mainframe)
+        self.canvas.configure(height=600, width=800)
         self.canvas.grid(column=0, row=0, sticky=(N, W, E, S))
 
+    def plot_image(self, images, dims=(1,1)):
+        "plots an image or equally sized pieces of an image into a canvas object"
+        if len(np.array(images).shape)==4:
+            assert dims[0]*dims[1]==len(images)
+        elif len(np.array(images).shape)==3:
+            assert dims[0]*dims[1]==1
+            images=[images]
+        else:
+            raise Exception("Invalid image object")
+        center=(400, 300)
+        shape=images[0].shape
+        full_size_reversed=np.array((shape[1]*dims[1], shape[0]*dims[0]))
 
+        centers=np.array([(x*shape[1], y*shape[0]) for y in range(dims[0]) for x in range(dims[1])])
+        centers+=center-full_size_reversed//2+(shape[1]//2,shape[0]//2)
 
+        self.images=images
+        self.canvas.tkimages=[ImageTk.PhotoImage(Image.fromarray(image)) for image in images]
+        for image, piece_center in zip(self.canvas.tkimages, centers):
+            id=self.canvas.create_image(piece_center[0], piece_center[1], image=image)
 
-
-
-dims=(3,3)
-def plot(event, image_pieces, shape):
-    images=[ImageTk.PhotoImage(Image.fromarray(image)) for image in image_pieces]
-    for i, image in enumerate(images):
-        print(i%3, i//3)
-        canvas.create_image(i%3*shape[1], i//3*shape[0], image=image, anchor=NW)
-    #canvas.create_line((0, 0, 100, 100))
-    #canvas.create_image(j*shape[1], i*shape[0], image=image, anchor=NW)
-
-canvas
-
-root.mainloop()
-
-
-#ttk.Label(mainframe, image=image).grid(column=0, row=1)
+    def get_resize_coef(self, full_size):
+        pass
