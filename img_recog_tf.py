@@ -156,7 +156,7 @@ def locate_pieces(pieces, solution_dataset, **params):
         for piece in pieces:
             piece_dataset=pool_set(tf.data.Dataset.from_tensors(piece), pooling).repeat()
             location=locate_one_piece(piece_dataset, solution_dataset, sess)
-            located_pieces.append((sess.run(piece), location))
+            located_pieces.append((piece, location))
         return located_pieces
     sess.close()
 
