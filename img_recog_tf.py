@@ -160,6 +160,13 @@ def locate_pieces(pieces, solution_dataset, **params):
         return located_pieces
     sess.close()
 
+def sort_pieces(sorted_image_pieces, dims):
+    sorted_pieces=[[0 for column in range(dims[1])] for row in range(dims[0])]
+    for image, location in sorted_image_pieces:
+        sorted_pieces[location[0]][location[1]]=image
+
+    return [image for row in sorted_pieces for image in row]
+
 def main():
     pass
 
