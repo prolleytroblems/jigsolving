@@ -3,7 +3,7 @@ from numpy.linalg import norm
 import cv2
 from random import normalvariate as nrand
 from random import sample
-
+from PIL import Image
 
 def openimg(path):
     return bgr_to_rgb(cv2.imread(path, 1))
@@ -50,9 +50,10 @@ def reassemble(pieces, dims):
 
 def b_distort(image, delta):
     """Randomly alter the brightness of each pixel of an image following a normal distribution."""
-
+    assert len(np.array(image.shape))==3
     def func(pixel_values):
         change=int(nrand(0, delta))
+
         new_values=[]
         for value in pixel_values.astype(int)+change:
             if value>255:
@@ -62,7 +63,7 @@ def b_distort(image, delta):
             else:
                 new_values.append(value)
         return np.array(new_values)
-    return np.apply_along_axis(func, 2, image)
+    return np.apply_along_axis(func, 2, image).astype("uint8")
 
 
 def s_distort(image, delta):
