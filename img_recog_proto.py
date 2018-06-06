@@ -83,3 +83,4 @@ def ub_distribution(image, delta, fixed_points):
     pass
 
 if __name__=="__main__":
+    pass
