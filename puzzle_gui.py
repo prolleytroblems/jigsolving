@@ -10,12 +10,14 @@ import cv2
 class GUI(Tk):
     """A simple gui for prototyping"""
 
-    def __init__(self, functions):
+    def __init__(self, functions, dims):
         """Two functions as input, in a 2-element dictionary. The first returns a shuffled set of pieces.
         The second returns the full solved image or sorted set of pieces. Neither receive any input."""
         super().__init__()
+        self.images=None
         self.open(functions)
-        self.path("puzzle.jpg")
+        self.path="puzzle.jpg"
+        self.dims=dims
         self.mainloop()
 
     def open(self, functions):
@@ -51,24 +53,24 @@ class GUI(Tk):
 
         shufflebutton=ttk.Button(buttonframe, text="Shuffle", default="active")
         shufflebutton.grid(column=0, row=1, pady=10)
-        shufflebutton.configure(command=lambda: plot_image(functions["shuffle"](self.path)))
+        shufflebutton.configure(command=lambda: self.plot_image(functions["shuffle"](self.path, dims=self.dims), dims=self.dims))
 
         solvebutton=ttk.Button(buttonframe, text="Solve")
-        solvebutton.configure(command=lambda: self.plot_image(functions["solve"](self.path)))
+        solvebutton.configure(command=lambda: self.plot_image(functions["solve"](self.path, self.images, dims=self.dims), dims=self.dims))
         solvebutton.grid(column=0, row=2, pady=10)
 
         buttonframe.columnconfigure(0, weight=1)
 
-        self.canvas = Canvas(mainframe)
+        self.canvas=Canvas(mainframe)
         self.canvas.configure(height=600, width=800)
         self.canvas.grid(column=0, row=0, sticky=(N, W, E, S))
 
     def plot_image(self, images, dims=(1,1)):
         "plots an image or equally sized pieces of an image into a canvas object"
-
-        if len(np.array(images.shape))==4:
+        if len(np.array(images).shape)==4:
             assert dims[0]*dims[1]==len(images)
-        elif len(images.shape)==3:
+        elif len(np.array(images).shape)==3:
+            assert dims[0]*dims[1]==1
             images=[images]
         else:
             raise Exception("Invalid image object")
@@ -78,9 +80,10 @@ class GUI(Tk):
 
         centers=np.array([(x*shape[1], y*shape[0]) for y in range(dims[0]) for x in range(dims[1])])
         centers+=center-full_size_reversed//2+(shape[1]//2,shape[0]//2)
-        self.canvas.images=[ImageTk.PhotoImage(Image.fromarray(image)) for image in images]
 
-        for image, piece_center in zip(self.canvas.images, centers):
+        self.images=images
+        self.canvas.tkimages=[ImageTk.PhotoImage(Image.fromarray(image)) for image in images]
+        for image, piece_center in zip(self.canvas.tkimages, centers):
             id=self.canvas.create_image(piece_center[0], piece_center[1], image=image)
 
     def get_resize_coef(self, full_size):
