@@ -3,14 +3,14 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 from time import sleep
 import cv2
+import numpy as np
 
 
 class GUI(Tk):
     """A simple gui for prototyping"""
 
     def __init__(self, functions, dims=(1,1)):
-        """Two functions as input, in a 2-element dictionary. The first returns a shuffled set of pieces.
-        The second returns the full solved image or sorted set of pieces. Neither receive any input."""
+        """Four functions as input, in a dictionary."""
         super().__init__()
         self.images=None
         self.dims=None
@@ -91,7 +91,8 @@ class GUI(Tk):
         pathentry.insert(0,"puzzle.jpg")
 
         openbutton=ttk.Button(openframe, text="Open", width=20)
-        openbutton.configure(command=lambda: self.plot_image(functions["open"](pathentry.get()), dims=(1,1)))
+        openbutton.configure(command=lambda: self.plot_image(functions["open"](pathentry.get()),
+                                                                                dims=(1,1)))
         openbutton.grid(column=0, row=1, columnspan=2, padx=3)
 
         detailslabel=ttk.Label(openframe)
@@ -132,7 +133,8 @@ class GUI(Tk):
 
         shufflebutton=ttk.Button(shuffleframe, text="Shuffle", default="active", width=20)
         shufflebutton.grid(column=0, row=1, columnspan=4, pady=2)
-        shufflebutton.configure(command=lambda: self.plot_image(functions["shuffle"](self.image, dims=(xvar.get(), yvar.get())), dims=(xvar.get(), yvar.get())))
+        shufflebutton.configure(command=lambda: self.plot_image(functions["shuffle"](self.images,
+                dims=(int(xvar.get()), int(yvar.get()))), dims=(int(xvar.get()), int(yvar.get()))))
 
         #-----------------------
 
@@ -144,14 +146,15 @@ class GUI(Tk):
         deltaentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
         deltaentry.insert(0,"10")
 
-        disttypevar = StringVar()
-        distortcombo = ttk.Combobox(distortframe, textvariable=disttypevar)
+        self.disttypevar = StringVar()
+        distortcombo = ttk.Combobox(distortframe, textvariable=self.disttypevar)
         distortcombo.configure(values=["Brightness", "Color", "Gradient"], state="readonly")
         distortcombo.grid(column=0, row=1, pady=2, padx=5, columnspan=2, sticky=(W,E))
-        disttypevar.set("Brightness")
+        self.disttypevar.set("Brightness")
 
         distortbutton=ttk.Button(distortframe, text="Distort", width=20)
-        distortbutton.configure(command=lambda: self.plot_image(functions["distort"](self.image, disttypevar.get())))
+        distortbutton.configure(command=lambda: self.plot_image(functions["distort"](self.images,
+                                                        float(deltaentry.get())), dims=self.dims))
         distortbutton.grid(column=0, row=2, pady=2, columnspan=2)
 
         #-------------------------
@@ -166,7 +169,8 @@ class GUI(Tk):
         poolvar.set("5")
 
         solvebutton=ttk.Button(solveframe, text="Solve", width=20)
-        solvebutton.configure(command=lambda: self.plot_image(functions["solve"](self.path, self.images, dims=self.dims), dims=self.dims))
+        solvebutton.configure(command=lambda: self.plot_image(functions["solve"](pathentry.get(),
+                        self.images, dims=self.dims, pooling=int(poolvar.get())), dims=self.dims))
         solvebutton.grid(column=0, row=1, columnspan=2, pady=2)
 
         #--------------------------
@@ -199,7 +203,6 @@ class GUI(Tk):
 
     def get_resize_coef(self, full_size):
         pass
-
 
 def main():
     window=GUI({"solve":lambda x:x, "shuffle":lambda x:x, "open":lambda x:x})
