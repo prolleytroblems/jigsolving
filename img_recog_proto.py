@@ -4,6 +4,7 @@ import cv2
 from random import normalvariate as nrand
 from random import sample
 from PIL import Image
+from numba import cuda
 
 def openimg(path):
     return bgr_to_rgb(cv2.imread(path, 1))
@@ -39,12 +40,24 @@ def img_split_cpu(image_or_path, dims):
             pieces.append(np.array(image[y_start: y_end, x_start: x_end]))
     return pieces
 
-def shuffle(image, dims):
+def shuffle(images, dims):
     """Shuffle the image into equal rectangular pieces"""
-    return sample(img_split_cpu(image, dims), dims[0]*dims[1])
+    images=np.array(images)
+    if not(isinstance(dims, tuple) and len(dims)==2): raise Exception("Wrong dims tuple type.")
+    if len(images.shape)==4:
+        if images.shape[0]==1:
+            return sample(img_split_cpu(images[0], dims), dims[0]*dims[1])
+        else:
+            return shuffle(reassemble(images, dims), dims)
+    elif len(images.shape)==3:
+        return sample(img_split_cpu(images, dims), dims[0]*dims[1])
+    else:
+        raise Exception("Wrong array size.")
+    return
 
 def reassemble(pieces, dims):
     """Reassembles ordered piece images into a full image"""
+    pieces=np.array(pieces)
     image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
     return image
 

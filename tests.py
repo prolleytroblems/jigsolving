@@ -13,7 +13,7 @@ def distort(images, delta):
     return [b_distort(image, 10) for image in images]
 
 def split_shuffle(images, dims):
-    return shuffle(images[0], dims)
+    return shuffle(images, dims)
 
 def solve(path, pieces, dims, pooling=5):
     end=sort_pieces(locate_pieces(np.array(pieces), Solution(path, dims)), dims)
