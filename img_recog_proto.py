@@ -5,27 +5,45 @@ from random import normalvariate as nrand
 from random import sample
 from PIL import Image
 from numba import cuda
+from pathlib import Path
 
-def openimg(path):
-    return bgr_to_rgb(cv2.imread(path, 1))
+def openimg(filepath):
+    def bgr_to_rgb(image):
+        b,g,r=np.split(image, 3, axis=2)
+        return np.concatenate((r,g,b), axis=2)
+
+    try:
+        mypath=Path(filepath)
+        if not(mypath.is_file()):
+            raise IOError("That file doesn't exist!")
+        return bgr_to_rgb(cv2.imread(filepath, 1))
+    except IOError as e:
+        print(e)
 
 def writeimg(name, image):
-    cv2.imwrite(name, rgb_to_bgr(image))
+    def rgb_to_bgr(image):
+        r,g,b=np.split(image, 3, axis=2)
+        return np.concatenate((b,g,r), axis=2)
+    try:
+        if not(isinstance(image, np.adarray) and len(image.shape)==4): raise TypeError("File is illegible as image!")
+        cv2.imwrite(name, rgb_to_bgr(image))
+    except TypeError as e:
+        print(e)
 
-def rgb_to_bgr(image):
-    r,g,b=np.split(image, 3, axis=2)
-    return np.concatenate((b,g,r), axis=2)
-
-def bgr_to_rgb(image):
-    b,g,r=np.split(image, 3, axis=2)
-    return np.concatenate((r,g,b), axis=2)
 
 def img_split_cpu(image_or_path, dims):
-    if type(image_or_path)==str:
+    "Splits an image into rectangular, equally-sized pieces. Returns a list, not an ndarray."
+    if isinstance(image_or_path, str):
         image=openimg(image_or_path)
+    elif isinstance(image_or_path, np.ndarray):
+        if len(image_or_path.shape)==3:
+            image=image_or_path
+        else:
+            raise TypeError("image_or_path must be of type str or np.ndarray")
     else:
-        image=image_or_path
-    assert type(dims)==tuple
+        raise TypeError("image_or_path must be of type str or np.ndarray")
+
+    assert isinstance(dims, tuple)
 
     pieces=[]
     height=image.shape[0]/dims[0]
@@ -43,7 +61,7 @@ def img_split_cpu(image_or_path, dims):
 def shuffle(images, dims):
     """Shuffle the image into equal rectangular pieces"""
     images=np.array(images)
-    if not(isinstance(dims, tuple) and len(dims)==2): raise Exception("Wrong dims tuple type.")
+    if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple.")
     if len(images.shape)==4:
         if images.shape[0]==1:
             return sample(img_split_cpu(images[0], dims), dims[0]*dims[1])
@@ -52,18 +70,20 @@ def shuffle(images, dims):
     elif len(images.shape)==3:
         return sample(img_split_cpu(images, dims), dims[0]*dims[1])
     else:
-        raise Exception("Wrong array size.")
+        raise TypeError("Array is not legible as image.")
     return
 
 def reassemble(pieces, dims):
     """Reassembles ordered piece images into a full image"""
     pieces=np.array(pieces)
+    if not(len(pieces.shape)==4): raise TypeError("pieces must be a 4-dimensional ndarray-like object")
+    if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple")
     image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
     return image
 
 def b_distort(image, delta):
     """Randomly alter the brightness of each pixel of an image following a normal distribution."""
-    assert len(np.array(image.shape))==3
+    if not(len(np.array(image.shape))==3): raise TypeError("Array is not legible as image")
     def func(pixel_values):
         change=int(nrand(0, delta))
 
