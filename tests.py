@@ -1,4 +1,4 @@
-from img_recog_tf import *
+from img_recog_numba import *
 from img_recog_proto import *
 from puzzle_gui import *
 
@@ -15,8 +15,8 @@ def distort(images, delta):
 def split_shuffle(images, dims):
     return shuffle(images[0], dims)
 
-def solve(path, img_pieces, dims, pooling=5):
-    end=sort_pieces(locate_pieces(img_pieces, dataset_from_solution(path, dims), pooling=pooling), dims)
+def solve(path, pieces, dims, pooling=5):
+    end=sort_pieces(locate_pieces(np.array(pieces), Solution(path, dims)), dims)
     return end
 
 functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
