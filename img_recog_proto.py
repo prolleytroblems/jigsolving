@@ -4,7 +4,7 @@ import cv2
 from random import normalvariate as nrand
 from random import sample
 from PIL import Image
-from numba import cuda
+from numba import cuda, guvectorize
 from pathlib import Path
 
 def openimg(filepath):
@@ -81,22 +81,22 @@ def reassemble(pieces, dims):
     image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
     return image
 
-def b_distort(image, delta):
-    """Randomly alter the brightness of each pixel of an image following a normal distribution."""
+def distort(image, delta, distortion):
     if not(len(np.array(image.shape))==3): raise TypeError("Array is not legible as image")
-    def func(pixel_values):
-        change=int(nrand(0, delta))
+    if distortion=="b_distort":
+        return b_distort(image, delta)
 
-        new_values=[]
-        for value in pixel_values.astype(int)+change:
-            if value>255:
-                new_values.append(255)
-            elif value<0:
-                new_values.append(0)
-            else:
-                new_values.append(value)
-        return np.array(new_values)
-    return np.apply_along_axis(func, 2, image).astype("uint8")
+@guvectorize("(uint8[:], float32, uint8[:])","(m),()->(m)")
+def b_distort(pixel, delta, res):
+    change=int(nrand(0, delta))
+    for i in range(3):
+        value=pixel[i]+change
+        if value>255:
+            res[i]=255
+        elif value<0:
+            res[i]=0
+        else:
+            res[i]=value
 
 
 def s_distort(image, delta):
