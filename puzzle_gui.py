@@ -4,16 +4,18 @@ from PIL import Image, ImageTk
 from time import sleep
 import cv2
 import numpy as np
+import re
 
 
 class GUI(Tk):
     """A simple gui for prototyping"""
 
-    def __init__(self, functions, dims=(1,1)):
+    def __init__(self, functions, dims=(1,1), **params):
         """Four functions as input, in a dictionary."""
         super().__init__()
         self.images=None
         self.dims=None
+        self.functions=functions
         self.start(functions)
         self.mainloop()
 
@@ -86,18 +88,17 @@ class GUI(Tk):
         pathlabel.configure(text="Path:")
         pathlabel.grid(column=0, row=0, sticky=W, pady=2, padx=3)
 
-        pathentry=ttk.Entry(openframe)
-        pathentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
-        pathentry.insert(0,"puzzle.jpg")
+        self.pathentry=ttk.Entry(openframe)
+        self.pathentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
+        self.pathentry.insert(0,"puzzle.jpg")
 
         openbutton=ttk.Button(openframe, text="Open", width=20)
-        openbutton.configure(command=lambda: self.plot_image(functions["open"](pathentry.get()),
-                                                                                dims=(1,1)))
+        openbutton.configure(command=lambda: self.open_image())
         openbutton.grid(column=0, row=1, columnspan=2, padx=3)
 
-        detailslabel=ttk.Label(openframe)
-        detailslabel.configure(text="Size:\nName:\nFormat:")
-        detailslabel.grid(column=0, row=2, columnspan=2, padx=3, sticky=(N,W,E))
+        self.detailslabel=ttk.Label(openframe)
+        self.detailslabel.configure(text="Size:\nName:\nFormat:")
+        self.detailslabel.grid(column=0, row=2, columnspan=2, padx=3, sticky=(N,W,E))
 
         #-------------------------
 
@@ -203,6 +204,14 @@ class GUI(Tk):
 
     def get_resize_coef(self, full_size):
         pass
+
+    def open_image(self):
+        path = self.pathentry.get()
+        image = self.functions["open"](path)
+        self.plot_image(image, dims=(1,1))
+        self.detailslabel.configure(text="Size: "+str(image.shape[0])+"x"+str(image.shape[1])
+                                        +"\nName: "+re.spit(r"\")[-1]+"\nFormat: "+"re.spit(r".")[-1]")
+
 
 def main():
     window=GUI({"solve":lambda x:x, "shuffle":lambda x:x, "open":lambda x:x})
