@@ -186,6 +186,8 @@ class GUI(Tk):
         else:
             raise Exception("Invalid image object")
         center=(400, 300)
+
+        images, ratio=resize_for_canvas(images, (640, 480))
         shape=images[0].shape
         full_size_reversed=np.array((shape[1]*dims[1], shape[0]*dims[0]))
 
@@ -198,8 +200,31 @@ class GUI(Tk):
         for image, piece_center in zip(self.canvas.tkimages, centers):
             id=self.canvas.create_image(piece_center[0], piece_center[1], image=image)
 
-    def get_resize_coef(self, full_size):
-        pass
+    @static
+    def resize_for_canvas(images, size):
+        if isinstance(images, np.ndarray):
+            shape=images.shape
+            if shape[1]/shape[0]=>1:
+                ratio=640/dims[1]/shape[1]
+                new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
+            elif shape[1]/shape[0]<1:
+                ratio=480//dims[0]/shape[0]
+                new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
+            return (cv2.resize(images, size), ratio)
+        elif isinstance(images, list):
+            shape=images[0].shape
+            if shape[1]/shape[0]=>1:
+                ratio=640/dims[1]/shape[1]
+                new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
+            elif shape[1]/shape[0]<1:
+                ratio=480//dims[0]/shape[0]
+                new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
+            resized=[]
+            for image in images
+                resized.append(cv2.resize(images, size))
+            return (resized, ratio)
+        else:
+            raise TypeError("Images must be an ndarray or list of ndarrays")
 
     def decorate_functions(self, functions):
         def open_image(self, path):
