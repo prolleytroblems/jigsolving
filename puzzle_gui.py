@@ -253,6 +253,39 @@ class GUI(Tk):
         return new_functions
 
 
+@cuda.jit("(uint8[:,:,:], int32[:,:], )")
+def max_pool_unit(image, pooling, stride, pooled_image):
+    y,x=cuda.grid(2)
+
+    if y>pooled_image.shape[0] or x>pooled_image.shape[1]:
+        return
+    window=image[y*stride[1]:y*stride[1]+pooling[1], x*stride[0]:x*stride[0]+pooling[0], :]
+    FLATTEN WINDOW AND TAKE MAX
+    pooled_image[y,x]=max()
+
+
+def pool(image, pooling, stride):
+    assert pooling>=stride
+    def add_padding(image, axis, side="end"):
+        if (image.shape[axis]-pooling+stride)%stride[axis]==0:
+            return image
+        else:
+            #add a blank row/column
+            IMPLEMENT THIS
+            if side=="end":
+                image=add_padding(image, axis, side="start")
+            if side=="start":
+                image=add_padding(image, axis, side="end")
+            return image
+
+    for axis in range(2):
+        image=add_padding(image, axis, "end")
+
+
+
+
+
+
 def main():
     window=GUI({"solve":lambda x:x, "shuffle":lambda x:x, "open":lambda x:x})
 
