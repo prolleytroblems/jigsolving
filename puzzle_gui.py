@@ -195,7 +195,7 @@ class GUI(Tk):
             raise Exception("Invalid image object")
         center=(400, 300)
 
-        #images, ratio=resize_for_canvas(images, (640, 480))
+        images, ratio=GUI.resize_for_canvas(images, (640, 480), dims)
         shape=images[0].shape
         full_size_reversed=np.array((shape[1]*dims[1], shape[0]*dims[0]))
 
@@ -209,7 +209,7 @@ class GUI(Tk):
             id=self.canvas.create_image(piece_center[0], piece_center[1], image=image)
 
     @staticmethod
-    def resize_for_canvas(images, size):
+    def resize_for_canvas(images, size, dims):
         if isinstance(images, np.ndarray):
             shape=images.shape
             if shape[1]/shape[0]>=1:
@@ -218,7 +218,7 @@ class GUI(Tk):
             elif shape[1]/shape[0]<1:
                 ratio=480//dims[0]/shape[0]
                 new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
-            return (cv2.resize(images, size), ratio)
+            return (cv2.resize(images, new_shape), ratio)
 
         elif isinstance(images, list):
             shape=images[0].shape
@@ -230,7 +230,7 @@ class GUI(Tk):
                 new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
             resized=[]
             for image in images:
-                resized.append(cv2.resize(images, size))
+                resized.append(cv2.resize(image, new_shape))
             return (resized, ratio)
         else:
             raise TypeError("Images must be an ndarray or list of ndarrays")
