@@ -255,7 +255,8 @@ class GUI(Tk):
             self.solvebutton.configure(state="enabled")
 
         def distort_image(delta, mode):
-            image=functions["distort"](self.images, delta, mode)
+            modedict={"Brightness":"b", "Color":"c", "Gradient":"g"}
+            image=functions["distort"](self.images, delta, modedict[mode])
             self.plot_image(image, dims=self.dims)
 
         def solve_puzzle(pooling=None):

@@ -1,4 +1,5 @@
 from numba import cuda,jit
+from datetime import datetime
 import numpy as np
 import cv2
 
@@ -43,20 +44,49 @@ def compare(dimga, dimgb, **params):
 
 def locate_one_piece(dpiece, solution, **params):
     """Will only receive preprocessed pieces!"""
-    max_resemblance=(0, None)
+    if not("debug_mode" in params):
+        params["debug_mode"]=False
+    if not("threshold" in params):
+        params["threshold"]=None
+
+    max_resemblance=[0, None, 0, 1]
+    #maximum resemblance, location index, second max resemblance(for debugging), min resemblance (for debugging)
 
     for i in range(solution.dpieces.shape[0]):
         if solution.availability[i]==True:
             resemblance=compare(dpiece, solution.dpieces[i], **params)
-            if "debug_mode" in params:
-                if params["debug_mode"]==True: print(resemblance)
+
             if resemblance>max_resemblance[0]:
-                max_resemblance=(resemblance, i)
+                max_resemblance[0]=resemblance
+                max_resemblance[1]=i
+                if params["threshold"]!=None:
+                    if resemblance>params["threshold"]:
+                        if params["debug_mode"]==True:
+                            print("Threshold crossed")
+                        break
+            elif params["debug_mode"]==True:
+                if resemblance>max_resemblance[2]:
+                    max_resemblance[2]=resemblance
+                if resemblance<max_resemblance[3]:
+                    max_resemblance[3]=resemblance
+
     solution.availability[max_resemblance[1]]=False
+
+    if params["debug_mode"]==True:
+        print("Piece index: "+str(params["index"])+
+                ", Max res.: "+ str(max_resemblance[0])+
+                ", 2nd max res.: "+ str(max_resemblance[2])+
+                ", Min res.: "+ str(max_resemblance[3]))
+
     return solution.locations[max_resemblance[1]]
 
 
 def preprocess_pieces(pieces, solution, pooling=None, **params):
+    if not("debug_mode" in params):
+        params["debug_mode"]=False
+    if params["debug_mode"]==True:
+        start=datetime.now()
+
     if not(isinstance(pieces, np.ndarray) and isinstance(solution, Solution)):raise TypeError("Wrong object type!")
     if not(len(pieces.shape)==4 and len(solution.pieces.shape)==4): raise Exception("Incorrect array shape!")
     if pieces.shape[0] != solution.pieces.shape[0]: raise Exception("Number of pieces don't match!")
@@ -64,16 +94,19 @@ def preprocess_pieces(pieces, solution, pooling=None, **params):
     if pieces.shape != solution.pieces.shape:
         print(pieces.shape, solution.pieces.shape)
         print("Piece shape mismatch!")
-        pieces=resize_batch(pieces, (solution.pieces[0].shape[0:2][::-1]))
+        pieces=resize_batch(pieces, (solution.pieces[0].shape[0:2][::-1]), **params)
 
     if pooling != None:
         pieces=pool(pieces, (5,5), (5,5))
         solution=pool(solution, (5,5), (5,5))
 
+    if params["debug_mode"]==True:
+        print("Preprocessing: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
+
     return (pieces, solution)
 
 
-def resize_batch(pieces, size):
+def resize_batch(pieces, size, **params):
     resized=[]
     for piece in pieces:
         resized.append(cv2.resize(piece, size))
@@ -81,18 +114,33 @@ def resize_batch(pieces, size):
 
 
 def locate_pieces(pieces, solution, pooling=None, **params):
+    if not("debug_mode" in params):
+        params["debug_mode"]=False
+
     pieces, solution = preprocess_pieces(pieces, solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(pieces))
     solved_locations=[]
     for i in range(len(solution.locations)):
+        if params["debug_mode"]==True:
+            params["index"]=i
         location=locate_one_piece(dpieces[i], solution, **params)
         solved_locations.append(location)
     return (pieces, np.array(solved_locations))
 
 
 def full_solve(pieces, solution, pooling=None, **params):
+    if not("debug_mode" in params):
+        params["debug_mode"]=False
 
-    return reassemble(sort_pieces(locate_pieces(pieces, solution, pooling, **params), solution.shape), solution.shape)
+    if params["debug_mode"]==True:
+        start=datetime.now()
+
+    solved=reassemble(sort_pieces(locate_pieces(pieces, solution, pooling, **params), solution.shape), solution.shape)
+
+    if params["debug_mode"]==True:
+        print("Solving: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
+
+    return solved
 
 
 def brg_to_rgb(image):

@@ -87,8 +87,10 @@ def reassemble(pieces, dims):
 
 def distort(image, delta, distortion):
     if not(len(np.array(image.shape))==3): raise TypeError("Array is not legible as image")
-    if distortion=="b_distort":
+    if distortion=="b":
         return b_distort(image, delta)
+    else:
+        raise Exception("Not implemented!")
 
 
 @guvectorize("(uint8[:], float32, uint8[:])","(m),()->(m)")
