@@ -58,6 +58,9 @@ def locate_one_piece(dpiece, solution, **params):
     if not("threshold" in params):
         params["threshold"]=None
 
+    if params["debug_mode"]==True:
+
+
     max_resemblance=[0, None, 0, 1]
     #maximum resemblance, location index, second max resemblance(for debugging), min resemblance (for debugging)
 
@@ -66,6 +69,10 @@ def locate_one_piece(dpiece, solution, **params):
             resemblance=compare(dpiece, solution.dpieces[i], **params)
 
             if resemblance>max_resemblance[0]:
+                if params["debug_mode"]==True:
+                    max_resemblance[2]=max_resemblance[0]
+                    if resemblance<max_resemblance[3]:
+                        max_resemblance[3]=resemblance
                 max_resemblance[0]=resemblance
                 max_resemblance[1]=i
                 if params["threshold"]!=None:
@@ -85,7 +92,8 @@ def locate_one_piece(dpiece, solution, **params):
         print("Piece index: "+str(params["index"])+
                 ", Max res.: "+ str(max_resemblance[0])+
                 ", 2nd max res.: "+ str(max_resemblance[2])+
-                ", Min res.: "+ str(max_resemblance[3]))
+                ", Min res.: "+ str(max_resemblance[3])+
+                ", ")
 
     return solution.locations[max_resemblance[1]]
 
@@ -133,6 +141,8 @@ def locate_pieces(pieces, solution, pooling=None, **params):
     for i in range(len(solution.locations)):
         if params["debug_mode"]==True:
             params["index"]=i
+
+        SHOULD ITERATE OVER LOCATIONS, NOT PIECES
         location=locate_one_piece(dpieces[i], p_solution, **params)
         solved_locations.append(location)
     return (pieces, np.array(solved_locations))
