@@ -147,9 +147,9 @@ class GUI(Tk):
 
         self.disttypevar = StringVar()
         distortcombo = ttk.Combobox(distortframe, textvariable=self.disttypevar)
-        distortcombo.configure(values=["Brightness", "Color", "Gradient"], state="readonly")
+        distortcombo.configure(values=["Noise", "Brightness", "Color", "Gradient"], state="readonly")
         distortcombo.grid(column=0, row=1, pady=2, padx=5, columnspan=2, sticky=(W,E))
-        self.disttypevar.set("Brightness")
+        self.disttypevar.set("Noise")
 
         self.distortbutton=ttk.Button(distortframe, text="Distort", width=20)
         self.distortbutton.configure(command=lambda: functions["distort"](delta=float(deltaentry.get()), mode=self.disttypevar.get()))
@@ -255,13 +255,13 @@ class GUI(Tk):
             self.solvebutton.configure(state="enabled")
 
         def distort_image(delta, mode):
-            modedict={"Brightness":"b", "Color":"c", "Gradient":"g"}
+            modedict={"Noise":"b", "Brightness":"b", "Color":"c", "Gradient":"g"}
             image=functions["distort"](self.images, delta, modedict[mode])
             self.plot_image(image, dims=self.dims)
 
         def solve_puzzle(pooling=None):
             image=functions["solve"](self.image_path, self.images, dims=self.dims,
-                                    pooling=None)
+                                    pooling=pooling)
             self.plot_image(image)
 
             self.shufflebutton.configure(state="disabled")

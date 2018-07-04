@@ -87,7 +87,7 @@ def reassemble(pieces, dims):
 
 def distort(image, delta, distortion):
     if not(len(np.array(image.shape))==3): raise TypeError("Array is not legible as image")
-    if distortion=="b":
+    if distortion=="n":
         return b_distort(image, delta)
     else:
         raise Exception("Not implemented!")
