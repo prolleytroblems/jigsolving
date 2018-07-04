@@ -253,21 +253,32 @@ class GUI(Tk):
         return new_functions
 
 
-@cuda.jit("(uint8[:,:,:], int32[:,:], )")
+@cuda.jit("(uint8[:,:,:], int32[:], int32[:], uint8[:,:,:])")
 def max_pool_unit(image, pooling, stride, pooled_image):
     y,x=cuda.grid(2)
 
     if y>pooled_image.shape[0] or x>pooled_image.shape[1]:
         return
     window=image[y*stride[1]:y*stride[1]+pooling[1], x*stride[0]:x*stride[0]+pooling[0], :]
-    FLATTEN WINDOW AND TAKE MAX
-    pooled_image[y,x]=max()
+
+    pooled_image[y,x,0]=0
+    pooled_image[y,x,1]=0
+    pooled_image[y,x,2]=0
+
+    for row in window:
+            for pixel in row:
+                if pixel[0]>pooled_image[y,x,0]:
+                    pooled_image[y,x,0]=pixel[0]
+                if pixel[1]>pooled_image[y,x,1]:
+                    pooled_image[y,x,1]=pixel[1]
+                if pixel[2]>pooled_image[y,x,2]:
+                    pooled_image[y,x,2]=pixel[2]
 
 
 def pool(image, pooling, stride):
-    assert pooling>=stride
+    assert pooling[0]>=stride[0] and pooling[1]>=stride[1]
     def add_padding(image, axis, side="end"):
-        if (image.shape[axis]-pooling+stride)%stride[axis]==0:
+        if (image.shape[axis]-pooling[axis]+stride[axis])%stride[axis]==0:
             return image
         else:
             #add a blank row/column
@@ -281,7 +292,14 @@ def pool(image, pooling, stride):
     for axis in range(2):
         image=add_padding(image, axis, "end")
 
+    final_dims=((image.shape[0]-pooling[0]+stride[0])//stride[0], (image.shape[1]-pooling[1]+stride[1])//stride[1])
+    tpb=16
+    bpgy=(final_dims[0]-1)//tbp+1
+    bpgy=(final_dims[1]-1)//tbp+1
 
+    dimage=cuda.to_device(np.ascontiguousarray(image))
+    dpooled=cuda.to_device(np.ndarray(np.zeros(final_dims), dtype=np.uint8))
+    max_pool_unit[(), ()](dimage, pooling, stride, )
 
 
 
