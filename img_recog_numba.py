@@ -9,6 +9,7 @@ class Solution(object):
         self.dpieces=cuda.to_device(np.ascontiguousarray(self.pieces))
         self.locations=np.array([(i,j) for i in range(dims[0]) for j in range(dims[1])])
         self.availability=[True]*dims[0]*dims[1]
+        self.shape=dims
 
 
 @cuda.jit(device=True)
@@ -81,6 +82,10 @@ def locate_pieces(pieces, solution, **params):
     return (pieces, np.array(solved_locations))
 
 
+def full_solve(pieces, solution, **params):
+    return reassemble(sort_pieces(locate_pieces(pieces, solution, **params), solution.shape), solution.shape)
+
+
 def brg_to_rgb(image):
     b,g,r=np.split(image, 3, axis=2)
     return np.concatenate((r,g,b), axis=2)
@@ -111,6 +116,15 @@ def sort_pieces(located_pieces, dims):
         sorted_pieces[location[0]][location[1]]=image
 
     return [image for row in sorted_pieces for image in row]
+
+
+def reassemble(pieces, dims):
+    """Reassembles ordered piece images into a full image"""
+    pieces=np.array(pieces)
+    if not(len(pieces.shape)==4): raise TypeError("pieces must be a 4-dimensional ndarray-like object")
+    if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple")
+    image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
+    return image
 
 
 @cuda.jit("void(uint8[:,:,:], int32[:], int32[:], uint8[:,:,:])")

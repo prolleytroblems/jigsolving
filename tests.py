@@ -17,7 +17,7 @@ def split_shuffle(images, dims):
     return shuffle(images, dims)
 
 def solve(path, pieces, dims, pooling=5):
-    end=sort_pieces(locate_pieces(np.array(pieces), Solution(path, dims)), dims)
+    end=full_solve(np.array(pieces), Solution(path, dims))
     return end
 
 functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}

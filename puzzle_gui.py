@@ -91,9 +91,9 @@ class GUI(Tk):
         self.pathentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
         self.pathentry.insert(0,"puzzle.jpg")
 
-        openbutton=ttk.Button(openframe, text="Open", width=20)
-        openbutton.configure(command=lambda: functions["open"](self.pathentry.get()))
-        openbutton.grid(column=0, row=1, columnspan=2, padx=3)
+        self.openbutton=ttk.Button(openframe, text="Open", width=20)
+        self.openbutton.configure(command=lambda: functions["open"](self.pathentry.get()))
+        self.openbutton.grid(column=0, row=1, columnspan=2, padx=3)
 
         self.detailslabel=ttk.Label(openframe)
         self.detailslabel.configure(text="Size:\nName:\nFormat:")
@@ -131,9 +131,9 @@ class GUI(Tk):
         yspin.grid(column=3, row=0, pady=2, padx=3)
         yvar.set("4")
 
-        shufflebutton=ttk.Button(shuffleframe, text="Shuffle", default="active", width=20)
-        shufflebutton.grid(column=0, row=1, columnspan=4, pady=2)
-        shufflebutton.configure(command=lambda: functions["shuffle"](dims=(int(yvar.get()), int(xvar.get()))))
+        self.shufflebutton=ttk.Button(shuffleframe, text="Shuffle", default="active", width=20)
+        self.shufflebutton.grid(column=0, row=1, columnspan=4, pady=2)
+        self.shufflebutton.configure(command=lambda: functions["shuffle"](dims=(int(yvar.get()), int(xvar.get()))))
 
         #-----------------------
 
@@ -151,9 +151,9 @@ class GUI(Tk):
         distortcombo.grid(column=0, row=1, pady=2, padx=5, columnspan=2, sticky=(W,E))
         self.disttypevar.set("Brightness")
 
-        distortbutton=ttk.Button(distortframe, text="Distort", width=20)
-        distortbutton.configure(command=lambda: functions["distort"](delta=float(deltaentry.get()), mode=self.disttypevar.get()))
-        distortbutton.grid(column=0, row=2, pady=2, columnspan=2)
+        self.distortbutton=ttk.Button(distortframe, text="Distort", width=20)
+        self.distortbutton.configure(command=lambda: functions["distort"](delta=float(deltaentry.get()), mode=self.disttypevar.get()))
+        self.distortbutton.grid(column=0, row=2, pady=2, columnspan=2)
 
         #-------------------------
 
@@ -166,15 +166,23 @@ class GUI(Tk):
         poolspin.grid(column=1, row=0, pady=2, padx=5, sticky=(W))
         poolvar.set("5")
 
-        solvebutton=ttk.Button(solveframe, text="Solve", width=20)
-        solvebutton.configure(command=lambda: functions["solve"](pooling=int(poolvar.get())))
-        solvebutton.grid(column=0, row=1, columnspan=2, pady=2)
+        self.solvebutton=ttk.Button(solveframe, text="Solve", width=20)
+        self.solvebutton.configure(command=lambda: functions["solve"](pooling=int(poolvar.get())))
+        self.solvebutton.grid(column=0, row=1, columnspan=2, pady=2)
 
         #--------------------------
 
         self.canvas=Canvas(mainframe)
         self.canvas.configure(height=600, width=800)
         self.canvas.grid(column=0, row=0, sticky=(N, W, E, S))
+
+        #--------------------------
+
+
+        self.shufflebutton.configure(state="disabled")
+        self.distortbutton.configure(state="disabled")
+        self.solvebutton.configure(state="disabled")
+
 
     def plot_image(self, images, dims=(1,1)):
         "plots an image or equally sized pieces of an image into a canvas object"
@@ -236,9 +244,15 @@ class GUI(Tk):
                                             re.split(r"\\", path)[-1] + "\nFormat: "+re.split(r"\.", path)[-1])
             self.image_path=path
 
+            self.shufflebutton.configure(state="enabled")
+
         def shuffle_image(dims):
             image=functions["shuffle"](self.images, dims=dims)
             self.plot_image(image, dims=dims)
+
+            self.distortbutton.configure(state="enabled")
+            self.shufflebutton.configure(state="disabled")
+            self.solvebutton.configure(state="enabled")
 
         def distort_image(delta, mode):
             image=functions["distort"](self.images, delta, mode)
@@ -247,7 +261,12 @@ class GUI(Tk):
         def solve_puzzle(pooling):
             image=functions["solve"](self.image_path, self.images, dims=self.dims,
                                     pooling=pooling)
-            self.plot_image(image, dims=self.dims)
+            self.plot_image(image)
+
+            self.shufflebutton.configure(state="disabled")
+            self.distortbutton.configure(state="disabled")
+            self.solvebutton.configure(state="disabled")
+            self.shufflebutton.configure(state="enabled")
 
         new_functions={"open": open_image, "shuffle": shuffle_image, "distort": distort_image, "solve": solve_puzzle}
 
