@@ -20,6 +20,7 @@ def openimg(filepath):
     except IOError as e:
         print(e)
 
+
 def writeimg(name, image):
     def rgb_to_bgr(image):
         r,g,b=np.split(image, 3, axis=2)
@@ -58,6 +59,7 @@ def img_split_cpu(image_or_path, dims):
             pieces.append(np.array(image[y_start: y_end, x_start: x_end]))
     return pieces
 
+
 def shuffle(images, dims):
     """Shuffle the image into equal rectangular pieces"""
     images=np.array(images)
@@ -73,6 +75,7 @@ def shuffle(images, dims):
         raise TypeError("Array is not legible as image.")
     return
 
+
 def reassemble(pieces, dims):
     """Reassembles ordered piece images into a full image"""
     pieces=np.array(pieces)
@@ -81,10 +84,12 @@ def reassemble(pieces, dims):
     image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
     return image
 
+
 def distort(image, delta, distortion):
     if not(len(np.array(image.shape))==3): raise TypeError("Array is not legible as image")
     if distortion=="b_distort":
         return b_distort(image, delta)
+
 
 @guvectorize("(uint8[:], float32, uint8[:])","(m),()->(m)")
 def b_distort(pixel, delta, res):
@@ -103,17 +108,21 @@ def s_distort(image, delta):
     """Randomly alter the shape of an image"""
     pass
 
+
 def ub_distribution(image, delta, fixed_points):
     """Randomly alter the brightness of an image as a whole."""
     pass
+
 
 def c_distort(image, delta):
     """Randomly alter the color vector of each pixel of an image following a normal distribution."""
     pass
 
+
 def ub_distribution(image, delta, fixed_points):
     """Randomly alter the color of an image as a whole."""
     pass
+
 
 if __name__=="__main__":
     pass

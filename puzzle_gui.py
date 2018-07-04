@@ -92,7 +92,7 @@ class GUI(Tk):
         self.pathentry.insert(0,"puzzle.jpg")
 
         openbutton=ttk.Button(openframe, text="Open", width=20)
-        openbutton.configure(command=lambda: functions["open"])
+        openbutton.configure(command=lambda: functions["open"](self.pathentry.get()))
         openbutton.grid(column=0, row=1, columnspan=2, padx=3)
 
         self.detailslabel=ttk.Label(openframe)
@@ -133,7 +133,7 @@ class GUI(Tk):
 
         shufflebutton=ttk.Button(shuffleframe, text="Shuffle", default="active", width=20)
         shufflebutton.grid(column=0, row=1, columnspan=4, pady=2)
-        shufflebutton.configure(command=lambda: functions["shuffle"](dims=(int(xvar.get()), int(yvar.get()))))
+        shufflebutton.configure(command=lambda: functions["shuffle"](dims=(int(yvar.get()), int(xvar.get()))))
 
         #-----------------------
 
@@ -152,7 +152,7 @@ class GUI(Tk):
         self.disttypevar.set("Brightness")
 
         distortbutton=ttk.Button(distortframe, text="Distort", width=20)
-        distortbutton.configure(command=lambda: functions["distort"](delta=float(deltaentry.get()), self.disttypevar.get()))
+        distortbutton.configure(command=lambda: functions["distort"](delta=float(deltaentry.get()), mode=self.disttypevar.get()))
         distortbutton.grid(column=0, row=2, pady=2, columnspan=2)
 
         #-------------------------
@@ -167,7 +167,7 @@ class GUI(Tk):
         poolvar.set("5")
 
         solvebutton=ttk.Button(solveframe, text="Solve", width=20)
-        solvebutton.configure(command=lambda: functions["solve"]())
+        solvebutton.configure(command=lambda: functions["solve"](pooling=int(poolvar.get())))
         solvebutton.grid(column=0, row=1, columnspan=2, pady=2)
 
         #--------------------------
@@ -187,7 +187,7 @@ class GUI(Tk):
             raise Exception("Invalid image object")
         center=(400, 300)
 
-        images, ratio=resize_for_canvas(images, (640, 480))
+        #images, ratio=resize_for_canvas(images, (640, 480))
         shape=images[0].shape
         full_size_reversed=np.array((shape[1]*dims[1], shape[0]*dims[0]))
 
@@ -200,107 +200,58 @@ class GUI(Tk):
         for image, piece_center in zip(self.canvas.tkimages, centers):
             id=self.canvas.create_image(piece_center[0], piece_center[1], image=image)
 
-    @static
+    @staticmethod
     def resize_for_canvas(images, size):
         if isinstance(images, np.ndarray):
             shape=images.shape
-            if shape[1]/shape[0]=>1:
+            if shape[1]/shape[0]>=1:
                 ratio=640/dims[1]/shape[1]
                 new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
             elif shape[1]/shape[0]<1:
                 ratio=480//dims[0]/shape[0]
                 new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
             return (cv2.resize(images, size), ratio)
+
         elif isinstance(images, list):
             shape=images[0].shape
-            if shape[1]/shape[0]=>1:
+            if shape[1]/shape[0]>=1:
                 ratio=640/dims[1]/shape[1]
                 new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
             elif shape[1]/shape[0]<1:
                 ratio=480//dims[0]/shape[0]
                 new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
             resized=[]
-            for image in images
+            for image in images:
                 resized.append(cv2.resize(images, size))
             return (resized, ratio)
         else:
             raise TypeError("Images must be an ndarray or list of ndarrays")
 
     def decorate_functions(self, functions):
-        def open_image(self, path):
-            image=functiond["open"](path)
+        def open_image(path):
+            image=functions["open"](path)
             self.plot_image(image, dims=(1,1))
-            self.detailslabel.configure(text="Size: " + str(image.shape[0])+"x" +
-                                            str(image.shape[1]) + "\nName: " +
-                                            re.spit("\\")[-1] + "\nFormat: "+re.spit(r".")[-1])
+            self.detailslabel.configure(text="Size: " + str(image.shape[0])+" x " +
+                                            str(image.shape[1]) + " pixels \nName: " +
+                                            re.split(r"\\", path)[-1] + "\nFormat: "+re.split(r"\.", path)[-1])
             self.image_path=path
 
-        def shuffle_image(self, shuffle_function, dims):
+        def shuffle_image(dims):
             image=functions["shuffle"](self.images, dims=dims)
             self.plot_image(image, dims=dims)
 
-        def distort_image(self, distort_function, delta, mode):
+        def distort_image(delta, mode):
             image=functions["distort"](self.images, delta, mode)
             self.plot_image(image, dims=self.dims)
 
-        def solve_puzzle(self, solve_function):
+        def solve_puzzle(pooling):
             image=functions["solve"](self.image_path, self.images, dims=self.dims,
-                                    pooling=int(poolvar.get()))
+                                    pooling=pooling)
             self.plot_image(image, dims=self.dims)
 
         new_functions={"open": open_image, "shuffle": shuffle_image, "distort": distort_image, "solve": solve_puzzle}
 
         return new_functions
-
-
-@cuda.jit("(uint8[:,:,:], int32[:], int32[:], uint8[:,:,:])")
-def max_pool_unit(image, pooling, stride, pooled_image):
-    y,x=cuda.grid(2)
-
-    if y>pooled_image.shape[0] or x>pooled_image.shape[1]:
-        return
-    window=image[y*stride[1]:y*stride[1]+pooling[1], x*stride[0]:x*stride[0]+pooling[0], :]
-
-    pooled_image[y,x,0]=0
-    pooled_image[y,x,1]=0
-    pooled_image[y,x,2]=0
-
-    for row in window:
-            for pixel in row:
-                if pixel[0]>pooled_image[y,x,0]:
-                    pooled_image[y,x,0]=pixel[0]
-                if pixel[1]>pooled_image[y,x,1]:
-                    pooled_image[y,x,1]=pixel[1]
-                if pixel[2]>pooled_image[y,x,2]:
-                    pooled_image[y,x,2]=pixel[2]
-
-
-def pool(image, pooling, stride):
-    assert pooling[0]>=stride[0] and pooling[1]>=stride[1]
-    def add_padding(image, axis, side="end"):
-        if (image.shape[axis]-pooling[axis]+stride[axis])%stride[axis]==0:
-            return image
-        else:
-            #add a blank row/column
-            IMPLEMENT THIS
-            if side=="end":
-                image=add_padding(image, axis, side="start")
-            if side=="start":
-                image=add_padding(image, axis, side="end")
-            return image
-
-    for axis in range(2):
-        image=add_padding(image, axis, "end")
-
-    final_dims=((image.shape[0]-pooling[0]+stride[0])//stride[0], (image.shape[1]-pooling[1]+stride[1])//stride[1])
-    tpb=16
-    bpgy=(final_dims[0]-1)//tbp+1
-    bpgy=(final_dims[1]-1)//tbp+1
-
-    dimage=cuda.to_device(np.ascontiguousarray(image))
-    dpooled=cuda.to_device(np.ndarray(np.zeros(final_dims), dtype=np.uint8))
-    max_pool_unit[(), ()](dimage, pooling, stride, )
-
 
 
 
