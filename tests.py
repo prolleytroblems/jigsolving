@@ -9,8 +9,7 @@ brightness_delta=30
 
 def open(path):
     return openimg(path)
-
-"""def distort(images, delta, mode):
+def distort(images, delta, mode):
     return [protodistort(image, 10, mode) for image in images]
 
 def split_shuffle(images, dims):
@@ -21,14 +20,4 @@ def solve(path, pieces, dims, pooling=5):
     return end
 
 functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
-root=GUI(functions)"""
-
-
-image=cv2.imread("puzzle.jpg")
-cv2.imshow("",image)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-image=pool_image(image, (3,3), (2,2))
-cv2.imshow("",image)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+root=GUI(functions)

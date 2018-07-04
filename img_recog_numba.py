@@ -5,8 +5,17 @@ import cv2
 
 
 class Solution(object):
-    def __init__(self, path, dims):
-        self.pieces=img_split(path, dims)
+    def __init__(self, path_or_pieces, dims):
+        if isinstance(path_or_pieces, np.ndarray) and len(path_or_pieces.shape)==4:
+            self.pieces=path_or_pieces
+        elif isinstance(path_or_pieces, str):
+            self.pieces = img_split(path_or_pieces, dims)
+        else:
+            try:
+                 self.pieces=np.array(pieces)
+                 if self.pieces.shape!=4: raise Exception
+            except Exception as e:
+                raise TypeError("path_or_pieces must be a path, or 4D ndarray-like of piece pbjects")
         self.dpieces=cuda.to_device(np.ascontiguousarray(self.pieces))
         self.locations=np.array([(i,j) for i in range(dims[0]) for j in range(dims[1])])
         self.availability=[True]*dims[0]*dims[1]
@@ -96,9 +105,9 @@ def preprocess_pieces(pieces, solution, pooling=None, **params):
         print("Piece shape mismatch!")
         pieces=resize_batch(pieces, (solution.pieces[0].shape[0:2][::-1]), **params)
 
-    if pooling != None:
-        pieces=pool(pieces, (5,5), (5,5))
-        solution=pool(solution, (5,5), (5,5))
+    if pooling != None and pooling != 1:
+        pieces=pool(pieces, (pooling, pooling), (pooling, pooling))
+        solution=pool(solution, (pooling, pooling), (pooling, pooling))
 
     if params["debug_mode"]==True:
         print("Preprocessing: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
@@ -117,13 +126,14 @@ def locate_pieces(pieces, solution, pooling=None, **params):
     if not("debug_mode" in params):
         params["debug_mode"]=False
 
-    pieces, solution = preprocess_pieces(pieces, solution, pooling, **params)
-    dpieces = cuda.to_device(np.ascontiguousarray(pieces))
+    p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
+    dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
+
     solved_locations=[]
     for i in range(len(solution.locations)):
         if params["debug_mode"]==True:
             params["index"]=i
-        location=locate_one_piece(dpieces[i], solution, **params)
+        location=locate_one_piece(dpieces[i], p_solution, **params)
         solved_locations.append(location)
     return (pieces, np.array(solved_locations))
 
@@ -205,15 +215,37 @@ def max_pool_unit(image, pooling, stride, pooled):
                 pooled[y,x,2]=window[i,j,2]
 
 
+def pool(images_or_solution, pooling, stride, **params):
+    if isinstance(images_or_solution, np.ndarray):
+        pooled=[]
+        for image in images_or_solution:
+            pooled.append(pool_image(image, pooling, stride, **params))
+        return np.array(pooled, dtype=np.uint8)
+
+    elif isinstance(images_or_solution, Solution):
+        dims=images_or_solution.shape
+        images_or_solution = images_or_solution.pieces
+        pooled=[]
+        for image in images_or_solution:
+            pooled.append(pool_image(image, pooling, stride, **params))
+        return Solution(np.array(pooled, dtype=np.uint8), dims)
+
+    else: raise TypeError("images_or_solution must be an ndarray or Solution instance")
+
+
+
+
 def pool_image(image, pooling, stride):
-    assert pooling[0]>=stride[0] and pooling[1]>=stride[1]
+    """Apply pooling to a single image. \n
+        image    """
+    if not(pooling[0]>=stride[0] and pooling[1]>=stride[1]): raise TypeError("Pooling and stride inputs should be ndarray-like")
+    if not(len(image.shape)==3): raise TypeError("Image must be a 3D ndarray.")
 
     pooling=np.array(pooling, dtype=np.uint8)
     stride=np.array(stride, dtype=np.uint8)
 
     def add_padding(image, axis, side="end"):
         assert axis==0 or axis==1
-        print((image.shape[axis]-pooling[axis]+stride[axis])%stride[axis])
         if (image.shape[axis]-pooling[axis]+stride[axis])%stride[axis]==0:
             return image
         else:
@@ -238,7 +270,6 @@ def pool_image(image, pooling, stride):
     bpgy=(final_dims[0]-1)//tpb+1
     bpgx=(final_dims[1]-1)//tpb+1
 
-    print(image.shape, final_dims)
     dimage=cuda.to_device(np.ascontiguousarray(image))
     pooled=np.array(np.ones(final_dims), dtype=np.uint8)
     dpooled=cuda.to_device(pooled)
@@ -246,7 +277,6 @@ def pool_image(image, pooling, stride):
     max_pool_unit[(bpgy, bpgx), (tpb, tpb)](dimage, pooling, stride, dpooled)
 
     dpooled.to_host()
-    print(pooled)
     return pooled
 
 

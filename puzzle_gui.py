@@ -195,6 +195,10 @@ class GUI(Tk):
             raise Exception("Invalid image object")
         center=(400, 300)
 
+        #This should go before resizing!
+        self.images=images
+        self.dims=dims
+
         images, ratio=GUI.resize_for_canvas(images, (640, 480), dims)
         shape=images[0].shape
         full_size_reversed=np.array((shape[1]*dims[1], shape[0]*dims[0]))
@@ -202,11 +206,10 @@ class GUI(Tk):
         centers=np.array([(x*shape[1], y*shape[0]) for y in range(dims[0]) for x in range(dims[1])])
         centers+=center-full_size_reversed//2+(shape[1]//2,shape[0]//2)
 
-        self.images=images
-        self.dims=dims
         self.canvas.tkimages=[ImageTk.PhotoImage(Image.fromarray(image)) for image in images]
         for image, piece_center in zip(self.canvas.tkimages, centers):
             id=self.canvas.create_image(piece_center[0], piece_center[1], image=image)
+
 
     @staticmethod
     def resize_for_canvas(images, size, dims):
@@ -235,6 +238,7 @@ class GUI(Tk):
         else:
             raise TypeError("Images must be an ndarray or list of ndarrays")
 
+
     def decorate_functions(self, functions):
         def open_image(path):
             image=functions["open"](path)
@@ -255,7 +259,7 @@ class GUI(Tk):
             self.solvebutton.configure(state="enabled")
 
         def distort_image(delta, mode):
-            modedict={"Noise":"b", "Brightness":"b", "Color":"c", "Gradient":"g"}
+            modedict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g"}
             image=functions["distort"](self.images, delta, modedict[mode])
             self.plot_image(image, dims=self.dims)
 
@@ -272,7 +276,6 @@ class GUI(Tk):
         new_functions={"open": open_image, "shuffle": shuffle_image, "distort": distort_image, "solve": solve_puzzle}
 
         return new_functions
-
 
 
 def main():
