@@ -56,25 +56,33 @@ def locate_one_piece(dpiece, solution, **params):
     return solution.locations[max_resemblance[1]]
 
 
-def preprocess_pieces(pieces, solution_pieces, **params):
-    if not(isinstance(pieces, np.ndarray) and isinstance(solution_pieces, np.ndarray)):raise TypeError("Wrong object type!")
-    if not(len(pieces.shape)==4 and len(solution_pieces.shape)==4): raise Exception("Incorrect array shape!")
-    if pieces.shape[0] != solution_pieces.shape[0]: raise Exception("Number of pieces don't match!")
+def preprocess_pieces(pieces, solution, pooling=None, **params):
+    if not(isinstance(pieces, np.ndarray) and isinstance(solution, Solution)):raise TypeError("Wrong object type!")
+    if not(len(pieces.shape)==4 and len(solution.pieces.shape)==4): raise Exception("Incorrect array shape!")
+    if pieces.shape[0] != solution.pieces.shape[0]: raise Exception("Number of pieces don't match!")
 
-    if pieces.shape != solution_pieces.shape:
+    if pieces.shape != solution.pieces.shape:
+        print(pieces.shape, solution.pieces.shape)
         print("Piece shape mismatch!")
-        pieces=resize(pieces, solution_pieces[0].shape[1:])
-    return pieces
+        pieces=resize_batch(pieces, (solution.pieces[0].shape[0:2][::-1]))
+
+    if pooling != None:
+        pieces=pool(pieces, (5,5), (5,5))
+        solution=pool(solution, (5,5), (5,5))
+
+    return (pieces, solution)
 
 
-def resize(pieces, size):
-    raise Exception("WRONG SIZE")
+def resize_batch(pieces, size):
+    resized=[]
+    for piece in pieces:
+        resized.append(cv2.resize(piece, size))
+    return np.array(resized)
 
 
-def locate_pieces(pieces, solution, **params):
-    print(type(pieces), type(solution.pieces))
-    pieces = preprocess_pieces(pieces, solution.pieces, **params)
-    dpieces=cuda.to_device(np.ascontiguousarray(pieces))
+def locate_pieces(pieces, solution, pooling=None, **params):
+    pieces, solution = preprocess_pieces(pieces, solution, pooling, **params)
+    dpieces = cuda.to_device(np.ascontiguousarray(pieces))
     solved_locations=[]
     for i in range(len(solution.locations)):
         location=locate_one_piece(dpieces[i], solution, **params)
@@ -82,8 +90,9 @@ def locate_pieces(pieces, solution, **params):
     return (pieces, np.array(solved_locations))
 
 
-def full_solve(pieces, solution, **params):
-    return reassemble(sort_pieces(locate_pieces(pieces, solution, **params), solution.shape), solution.shape)
+def full_solve(pieces, solution, pooling=None, **params):
+
+    return reassemble(sort_pieces(locate_pieces(pieces, solution, pooling, **params), solution.shape), solution.shape)
 
 
 def brg_to_rgb(image):
@@ -110,7 +119,6 @@ def img_split(image_path, dims, **params):
 
 
 def sort_pieces(located_pieces, dims):
-    print(located_pieces)
     sorted_pieces=[[0 for column in range(dims[1])] for row in range(dims[0])]
     for image, location in zip(located_pieces[0], located_pieces[1]):
         sorted_pieces[location[0]][location[1]]=image
@@ -127,7 +135,7 @@ def reassemble(pieces, dims):
     return image
 
 
-@cuda.jit("void(uint8[:,:,:], int32[:], int32[:], uint8[:,:,:])")
+@cuda.jit
 def max_pool_unit(image, pooling, stride, pooled_image):
     y,x=cuda.grid(2)
 
@@ -149,7 +157,7 @@ def max_pool_unit(image, pooling, stride, pooled_image):
                 pooled_image[y,x,2]=window[i,j,2]
 
 
-def pool(image, pooling, stride):
+def pool_image(image, pooling, stride):
     assert pooling[0]>=stride[0] and pooling[1]>=stride[1]
     def add_padding(image, axis, side="end"):
         if (image.shape[axis]-pooling[axis]+stride[axis])%stride[axis]==0:
@@ -177,6 +185,7 @@ def pool(image, pooling, stride):
     dimage=cuda.to_device(np.ascontiguousarray(image))
     dpooled=cuda.to_device(np.ndarray(np.zeros(final_dims), dtype=np.uint8))
     max_pool_unit[(), ()](dimage, pooling, stride, )
+
 
 
 def main():

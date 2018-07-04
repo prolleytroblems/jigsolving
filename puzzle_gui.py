@@ -258,9 +258,9 @@ class GUI(Tk):
             image=functions["distort"](self.images, delta, mode)
             self.plot_image(image, dims=self.dims)
 
-        def solve_puzzle(pooling):
+        def solve_puzzle(pooling=None):
             image=functions["solve"](self.image_path, self.images, dims=self.dims,
-                                    pooling=pooling)
+                                    pooling=None)
             self.plot_image(image)
 
             self.shufflebutton.configure(state="disabled")
