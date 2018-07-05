@@ -52,14 +52,14 @@ def compare(dimga, dimgb, **params):
 
 
 def locate_one_piece(dpiece, solution, **params):
-    """Will only receive preprocessed pieces!"""
+    """Will only receive preprocessed device arrays!"""
     if not("debug_mode" in params):
         params["debug_mode"]=False
     if not("threshold" in params):
         params["threshold"]=None
 
     if params["debug_mode"]==True:
-
+        start=datetime.now()
 
     max_resemblance=[0, None, 0, 1]
     #maximum resemblance, location index, second max resemblance(for debugging), min resemblance (for debugging)
@@ -89,11 +89,11 @@ def locate_one_piece(dpiece, solution, **params):
     solution.availability[max_resemblance[1]]=False
 
     if params["debug_mode"]==True:
-        print("Piece index: "+str(params["index"])+
+        print("Piece index"+str(params["index"])+
                 ", Max res.: "+ str(max_resemblance[0])+
                 ", 2nd max res.: "+ str(max_resemblance[2])+
                 ", Min res.: "+ str(max_resemblance[3])+
-                ", ")
+                ", "+ "Runtime: "+ str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
 
     return solution.locations[max_resemblance[1]]
 
@@ -123,6 +123,58 @@ def preprocess_pieces(pieces, solution, pooling=None, **params):
     return (pieces, solution)
 
 
+def find_match(dto_match, dpieces, availability=None, **params):
+    """Will only receive preprocessed device arrays! \n
+        Returns the index of best matching piece from array pieces."""
+    if not("debug_mode" in params):
+        params["debug_mode"]=False
+    if not("threshold" in params):
+        params["threshold"]=None
+    if params["debug_mode"]==True:
+        start=datetime.now()
+    if availability==None:
+        av_array=[True]*dpieces.shape[0]
+    else:
+        assert all(e==True or e==False for e in availability) and isinstance(availability, list)
+        av_array=availability
+
+    max_resemblance=[0, None, 0, 1]
+    #maximum resemblance, match index, second max resemblance(for debugging), min resemblance (for debugging)
+
+    for i in range(dpieces.shape[0]):
+        if av_array[i]==True:
+            resemblance=compare(dpieces[i], dto_match, **params)
+
+            if resemblance>max_resemblance[0]:
+                if params["debug_mode"]==True:
+                    max_resemblance[2]=max_resemblance[0]
+                    if resemblance<max_resemblance[3]:
+                        max_resemblance[3]=resemblance
+                max_resemblance[0]=resemblance
+                max_resemblance[1]=i
+                if params["threshold"]!=None:
+                    if resemblance>params["threshold"]:
+                        if params["debug_mode"]==True:
+                            print("Threshold crossed")
+                        break
+            elif params["debug_mode"]==True:
+                if resemblance>max_resemblance[2]:
+                    max_resemblance[2]=resemblance
+                if resemblance<max_resemblance[3]:
+                    max_resemblance[3]=resemblance
+
+    if availability!=None:
+        availability[max_resemblance[1]]=False
+
+    if params["debug_mode"]==True:
+
+        print(" {0:<13}  {1:<13.5f}  {2:<13.5f}  {3:<13.5f}  {4:<13.2f}".format(
+                params["index"], max_resemblance[0], max_resemblance[2], max_resemblance[3],
+                float((datetime.now()-start).seconds*1000)+float((datetime.now()-start).microseconds)/1000))
+
+    return max_resemblance[1]
+
+
 def resize_batch(pieces, size, **params):
     resized=[]
     for piece in pieces:
@@ -134,18 +186,22 @@ def locate_pieces(pieces, solution, pooling=None, **params):
     if not("debug_mode" in params):
         params["debug_mode"]=False
 
+
     p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
 
-    solved_locations=[]
-    for i in range(len(solution.locations)):
+    ordered_pieces=[]
+
+    if params["debug_mode"]==True:
+        print("{0:<15s}{1:<15s}{2:<15s}{3:<15s}{4:<15s}".format("Piece index", "Max res.", "2nd max res.", "Min res.", "Runtime (ms)"))
+
+    for i in range(len(p_solution.locations)):
         if params["debug_mode"]==True:
             params["index"]=i
 
-        SHOULD ITERATE OVER LOCATIONS, NOT PIECES
-        location=locate_one_piece(dpieces[i], p_solution, **params)
-        solved_locations.append(location)
-    return (pieces, np.array(solved_locations))
+        index=find_match(p_solution.dpieces[i], dpieces, p_solution.availability, **params)
+        ordered_pieces.append(pieces[index])
+    return (ordered_pieces, np.array(p_solution.locations))
 
 
 def full_solve(pieces, solution, pooling=None, **params):
@@ -281,7 +337,7 @@ def pool_image(image, pooling, stride):
     bpgx=(final_dims[1]-1)//tpb+1
 
     dimage=cuda.to_device(np.ascontiguousarray(image))
-    pooled=np.array(np.ones(final_dims), dtype=np.uint8)
+    pooled=np.array(np.zeros(final_dims), dtype=np.uint8)
     dpooled=cuda.to_device(pooled)
 
     max_pool_unit[(bpgy, bpgx), (tpb, tpb)](dimage, pooling, stride, dpooled)
