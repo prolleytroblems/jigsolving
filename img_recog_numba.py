@@ -114,8 +114,8 @@ def preprocess_pieces(pieces, solution, pooling=None, **params):
         pieces=resize_batch(pieces, (solution.pieces[0].shape[0:2][::-1]), **params)
 
     if pooling != None and pooling != 1:
-        pieces=pool(pieces, (pooling, pooling), (pooling, pooling))
-        solution=pool(solution, (pooling, pooling), (pooling, pooling))
+        pieces=pool(pieces, (pooling, pooling), (pooling, pooling), **params)
+        solution=pool(solution, (pooling, pooling), (pooling, pooling), **params)
 
     if params["debug_mode"]==True:
         print("Preprocessing: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
@@ -207,6 +207,9 @@ def locate_pieces(pieces, solution, pooling=None, **params):
 def full_solve(pieces, solution, pooling=None, **params):
     if not("debug_mode" in params):
         params["debug_mode"]=False
+    if not("iterator" in params):
+        params["iterator"]=True
+
 
     if params["debug_mode"]==True:
         start=datetime.now()
@@ -282,10 +285,18 @@ def max_pool_unit(image, pooling, stride, pooled):
 
 
 def pool(images_or_solution, pooling, stride, **params):
+
+    if not("debug_mode" in params):
+        params["debug_mode"]=False
+    if params["debug_mode"]==True:
+        start=datetime.now()
+
     if isinstance(images_or_solution, np.ndarray):
         pooled=[]
         for image in images_or_solution:
             pooled.append(pool_image(image, pooling, stride, **params))
+        if params["debug_mode"]==True:
+            print("Pooling images: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
         return np.array(pooled, dtype=np.uint8)
 
     elif isinstance(images_or_solution, Solution):
@@ -294,16 +305,21 @@ def pool(images_or_solution, pooling, stride, **params):
         pooled=[]
         for image in images_or_solution:
             pooled.append(pool_image(image, pooling, stride, **params))
+        if params["debug_mode"]==True:
+            print("Pooling solution: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
         return Solution(np.array(pooled, dtype=np.uint8), dims)
 
     else: raise TypeError("images_or_solution must be an ndarray or Solution instance")
 
 
-
-
-def pool_image(image, pooling, stride):
+def pool_image(image, pooling, stride, **params):
     """Apply pooling to a single image. \n
-        image    """
+        image    ndarray \n
+        pooling  tuple of int of len=2 \n
+        stride   tuple of int of len=2 \n """
+
+
+
     if not(pooling[0]>=stride[0] and pooling[1]>=stride[1]): raise TypeError("Pooling and stride inputs should be ndarray-like")
     if not(len(image.shape)==3): raise TypeError("Image must be a 3D ndarray.")
 
@@ -343,6 +359,7 @@ def pool_image(image, pooling, stride):
     max_pool_unit[(bpgy, bpgx), (tpb, tpb)](dimage, pooling, stride, dpooled)
 
     dpooled.to_host()
+
     return pooled
 
 
