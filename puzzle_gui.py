@@ -12,11 +12,17 @@ class GUI(Tk):
 
     def __init__(self, functions, dims=(1,1), **params):
         """Four functions as input, in a dictionary."""
+        if not("decorate" in params):
+            params["decorate"]=True
         super().__init__()
         self.images=None
         self.dims=None
-        self.start(self.decorate_functions(functions))
+        if params["decorate"]==True:
+            self.start(self.decorate_functions(functions))
+        else:
+            self.start(functions)
         self.mainloop()
+
 
     def start(self, functions):
         self.title("Image rebuild")
@@ -147,7 +153,7 @@ class GUI(Tk):
 
         self.disttypevar = StringVar()
         distortcombo = ttk.Combobox(distortframe, textvariable=self.disttypevar)
-        distortcombo.configure(values=["Noise", "Brightness", "Color", "Gradient"], state="readonly")
+        distortcombo.configure(values=["Noise", "Brightness", "Color", "Gradient", "Shape"], state="readonly")
         distortcombo.grid(column=0, row=1, pady=2, padx=5, columnspan=2, sticky=(W,E))
         self.disttypevar.set("Noise")
 
@@ -184,8 +190,14 @@ class GUI(Tk):
         self.solvebutton.configure(state="disabled")
 
 
-    def plot_image(self, images, dims=(1,1)):
+    def plot_image(self, images, dims=(1,1), **params):
         "plots an image or equally sized pieces of an image into a canvas object"
+        if not("clear" in params):
+            params["clear"]=True
+
+        if params["clear"]==True:
+            self.canvas.delete(self.canvas.find_all())
+
         if len(np.array(images).shape)==4:
             assert dims[0]*dims[1]==len(images)
         elif len(np.array(images).shape)==3:
@@ -207,8 +219,12 @@ class GUI(Tk):
         centers+=center-full_size_reversed//2+(shape[1]//2,shape[0]//2)
 
         self.canvas.tkimages=[ImageTk.PhotoImage(Image.fromarray(image)) for image in images]
+
+        ids=[]
         for image, piece_center in zip(self.canvas.tkimages, centers):
-            id=self.canvas.create_image(piece_center[0], piece_center[1], image=image)
+            ids.append(self.canvas.create_image(piece_center[0], piece_center[1], image=image))
+
+        return ids
 
 
     @staticmethod
@@ -242,13 +258,15 @@ class GUI(Tk):
     def decorate_functions(self, functions):
         def open_image(path):
             image=functions["open"](path)
-            self.plot_image(image, dims=(1,1))
+            ids=self.plot_image(image, dims=(1,1))
             self.detailslabel.configure(text="Size: " + str(image.shape[0])+" x " +
                                             str(image.shape[1]) + " pixels \nName: " +
                                             re.split(r"\\", path)[-1] + "\nFormat: "+re.split(r"\.", path)[-1])
             self.image_path=path
 
             self.shufflebutton.configure(state="enabled")
+
+            self.distortbutton.configure(state="enabled")
 
         def shuffle_image(dims):
             image=functions["shuffle"](self.images, dims=dims)
@@ -259,7 +277,7 @@ class GUI(Tk):
             self.solvebutton.configure(state="enabled")
 
         def distort_image(delta, mode):
-            modedict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g"}
+            modedict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g", "Shape":"s"}
             image=functions["distort"](self.images, delta, modedict[mode])
             self.plot_image(image, dims=self.dims)
 
@@ -269,7 +287,6 @@ class GUI(Tk):
             self.plot_image(image)
 
             self.shufflebutton.configure(state="disabled")
-            self.distortbutton.configure(state="disabled")
             self.solvebutton.configure(state="disabled")
             self.shufflebutton.configure(state="enabled")
 
