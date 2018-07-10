@@ -255,6 +255,36 @@ class GUI(Tk):
             raise TypeError("Images must be an ndarray or list of ndarrays")
 
 
+    def move_image(self, id, delx, dely, time=None):
+        def diff_move(id, x0, y0, dx, dy, step, end):
+
+            px=int(x0+dx-int(x0))
+            py=int(y0+dy-int(y0))
+            if px>0 or py>0:
+                self.canvas.move(id, px, py)
+            if step<end:
+                self.canvas.after(1, lambda : diff_move(id, x0+dx, y0+dy, dx, dy, step+1, end))
+
+        if time==None:
+            self.canvas.move(id, dx, dy)
+            return
+
+        elif isinstance(time, int):
+            dx=delx/time
+            dy=dely/time
+            print(self.canvas.coords(id))
+            x0, y0 = self.canvas.coords(id)
+            diff_move(id,x0, y0, dx, dy, 0, time )
+
+        else:
+            raise TypeError("time must be a positive integer")
+
+
+
+
+
+
+
     def decorate_functions(self, functions):
         def open_image(path):
             image=functions["open"](path)
@@ -265,12 +295,16 @@ class GUI(Tk):
             self.image_path=path
 
             self.shufflebutton.configure(state="enabled")
-
             self.distortbutton.configure(state="enabled")
 
+            return ids
+
+
         def shuffle_image(dims):
-            image=functions["shuffle"](self.images, dims=dims)
-            self.plot_image(image, dims=dims)
+            #image=functions["shuffle"](self.images, dims=dims)
+
+            id=self.plot_image(self.images[0])[0]
+            self.move_image(id, 30, 50, 2000)
 
             self.distortbutton.configure(state="enabled")
             self.shufflebutton.configure(state="disabled")
