@@ -2,24 +2,7 @@ from numba import cuda,jit
 from datetime import datetime
 import numpy as np
 import cv2
-
-
-class Solution(object):
-    def __init__(self, path_or_pieces, dims):
-        if isinstance(path_or_pieces, np.ndarray) and len(path_or_pieces.shape)==4:
-            self.pieces=path_or_pieces
-        elif isinstance(path_or_pieces, str):
-            self.pieces = img_split(path_or_pieces, dims)
-        else:
-            try:
-                 self.pieces=np.array(pieces)
-                 if self.pieces.shape!=4: raise Exception
-            except Exception as e:
-                raise TypeError("path_or_pieces must be a path, or 4D ndarray-like of piece pbjects")
-        self.dpieces=cuda.to_device(np.ascontiguousarray(self.pieces))
-        self.locations=np.array([(i,j) for i in range(dims[0]) for j in range(dims[1])])
-        self.availability=[True]*dims[0]*dims[1]
-        self.shape=dims
+from image_obj import *
 
 
 @cuda.jit(device=True)
@@ -126,10 +109,12 @@ def preprocess_pieces(pieces, solution, pooling=None, **params):
 def find_match(dto_match, dpieces, availability=None, **params):
     """Will only receive preprocessed device arrays! \n
         Returns the index of best matching piece from array pieces."""
+
     if not("debug_mode" in params):
         params["debug_mode"]=False
     if not("threshold" in params):
         params["threshold"]=None
+
     if params["debug_mode"]==True:
         start=datetime.now()
     if availability==None:
@@ -225,24 +210,6 @@ def full_solve(pieces, solution, pooling=None, **params):
 def brg_to_rgb(image):
     b,g,r=np.split(image, 3, axis=2)
     return np.concatenate((r,g,b), axis=2)
-
-
-def img_split(image_path, dims, **params):
-    assert type(dims)==tuple
-    image=brg_to_rgb(cv2.imread(image_path, 1))
-
-    pieces=[]
-    height=image.shape[0]/dims[0]
-    width=image.shape[1]/dims[1]
-    for y_split in range(dims[0]):
-        for x_split in range(dims[1]):
-            x_start=int(x_split*width)
-            x_end=x_start+int(width)
-            y_start=int(y_split*height)
-            y_end=y_start+int(height)
-
-            pieces.append(np.array(image[y_start: y_end, x_start: x_end]))
-    return np.array(pieces)
 
 
 def sort_pieces(located_pieces, dims):

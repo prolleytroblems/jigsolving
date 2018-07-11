@@ -33,7 +33,7 @@ def writeimg(name, image):
         print(e)
 
 
-def img_split_cpu(image_or_path, dims):
+def img_split(image_or_path, dims):
     "Splits an image into rectangular, equally-sized pieces. Returns a list, not an ndarray."
     if isinstance(image_or_path, str):
         image=openimg(image_or_path)
@@ -67,11 +67,11 @@ def shuffle(images, dims):
     if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple.")
     if len(images.shape)==4:
         if images.shape[0]==1:
-            return sample(img_split_cpu(images[0], dims), dims[0]*dims[1])
+            return sample(img_split(images[0], dims), dims[0]*dims[1])
         else:
             return shuffle(reassemble(images, dims), dims)
     elif len(images.shape)==3:
-        return sample(img_split_cpu(images, dims), dims[0]*dims[1])
+        return sample(img_split(images, dims), dims[0]*dims[1])
     else:
         raise TypeError("Array is not legible as image.")
     return
