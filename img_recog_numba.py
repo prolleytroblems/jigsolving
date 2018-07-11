@@ -202,6 +202,7 @@ def locate_pieces_iterator(pieces, solution, pooling=None, **params):
         index=find_match(p_solution.dpieces[i], dpieces, p_solution.availability, **params)
         yield(pieces[index], p_solution.locations[i])
 
+
 def full_solve(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 

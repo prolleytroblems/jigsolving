@@ -194,7 +194,6 @@ class GUI(Tk):
         "plots an image or equally sized pieces of an image into a canvas object"
         if not("clear" in params):
             params["clear"]=True
-
         if len(np.array(images).shape)==4:
             assert dims[0]*dims[1]==len(images)
         elif len(np.array(images).shape)==3:
@@ -212,12 +211,11 @@ class GUI(Tk):
         self.images=images
         self.dims=dims
 
-        images, ratio=GUI.resize_for_canvas(images, (640, 480), dims)
-        shape=images[0].shape
-        full_size_reversed=np.array((shape[1]*dims[1], shape[0]*dims[0]))
+        images, ratio=GUI.resize_for_canvas(images, dims, (640, 480))
 
-        centers=np.array([(x*shape[1], y*shape[0]) for y in range(dims[0]) for x in range(dims[1])])
-        centers+=center-full_size_reversed//2+(shape[1]//2,shape[0]//2)
+        centers=self.find_plot_locations(dims, (images[0].shape[0], images[0].shape[1]), center)
+
+        self.locations=np.reshape(centers, (dims))
 
         self.canvas.tkimages=[ImageTk.PhotoImage(Image.fromarray(image)) for image in images]
 
@@ -228,26 +226,36 @@ class GUI(Tk):
         return ids
 
 
+    def find_plot_locations(self, dims, piece_shape, center=(400,300), reference="center"):
+        if reference=="center":
+            full_size=np.array((piece_shape[1]*dims[1], piece_shape[0]**dims[0]))
+            centers=np.array([(x*piece_shape[1], y*piece_shape[0]) for y in range(dims[0]) for x in range(dims[1])])
+            centers+=center-full_size//2+(piece_shape[1]//2,piece_shape[0]//2)
+            return centers
+
+        else: raise NotImplementedError()
+
+
     @staticmethod
-    def resize_for_canvas(images, size, dims):
+    def resize_for_canvas(images, dims, size=(640,480)):
         if isinstance(images, np.ndarray):
             shape=images.shape
             if shape[1]/shape[0]>=1:
-                ratio=640/dims[1]/shape[1]
+                ratio=size[0]/dims[1]/shape[1]
                 new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
             elif shape[1]/shape[0]<1:
-                ratio=480//dims[0]/shape[0]
+                ratio=size[1]//dims[0]/shape[0]
                 new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
             return (cv2.resize(images, new_shape), ratio)
 
         elif isinstance(images, list):
             shape=images[0].shape
             if shape[1]/shape[0]>=1:
-                ratio=640/dims[1]/shape[1]
-                new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
-            elif shape[1]/shape[0]<1:
-                ratio=480//dims[0]/shape[0]
-                new_shape=(int(ratio*shape[1]), int(ratio*shape[0]))
+                ratio = size[0] / dims[1] / shape[1]
+                new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
+            elif shape[1] / shape[0] < 1:
+                ratio = size[1] // dims[0] / shape[0]
+                new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
             resized=[]
             for image in images:
                 resized.append(cv2.resize(image, new_shape))
@@ -312,6 +320,7 @@ class GUI(Tk):
         def solve_puzzle(pooling=None):
             image=functions["solve"](self.image_path, self.images, dims=self.dims,
                                     pooling=pooling)
+            print(type(image))
             self.plot_image(image)
 
             self.shufflebutton.configure(state="disabled")
