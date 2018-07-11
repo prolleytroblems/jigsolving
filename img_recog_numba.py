@@ -216,11 +216,6 @@ def full_solve(pieces, solution, pooling=None, **params):
     return solved
 
 
-def brg_to_rgb(image):
-    b,g,r=np.split(image, 3, axis=2)
-    return np.concatenate((r,g,b), axis=2)
-
-
 def sort_pieces(located_pieces, dims):
     sorted_pieces=[[0 for column in range(dims[1])] for row in range(dims[0])]
     for image, location in zip(located_pieces[0], located_pieces[1]):
