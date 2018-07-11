@@ -19,5 +19,13 @@ def solve(path, pieces, dims, pooling=5):
     end=full_solve(np.array(pieces), Solution(path, dims), pooling, debug_mode=True)
     return end
 
-functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
+#functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
+
+
+def move_image():
+    pass
+def plot_image():
+    pass
+
+functions={"shuffle":move_image, "solve":lambda x:x, "open":open, "distort":lambda x:x}
 root=GUI(functions)

@@ -256,6 +256,7 @@ class GUI(Tk):
             raise TypeError("Images must be an ndarray or list of ndarrays")
 
 
+<<<<<<< HEAD
     def move_image(self, id, delx, dely, time=None, r_rate=10):
         def diff_move(id, x0, y0, dx, dy, step, end):
             px=round(x0+dx-round(x0))
@@ -265,21 +266,49 @@ class GUI(Tk):
                 self.canvas.move(id, px, py)
             if step<end:
                 self.canvas.after(r_rate, lambda : diff_move(id, x0+dx, y0+dy, dx, dy, step+r_rate, end))
+=======
+    def move_image(self, id, delx, dely, time=None):
+        def diff_move(id, x0, y0, dx, dy, step, end):
+
+            px=int(x0+dx-int(x0))
+            py=int(y0+dy-int(y0))
+            if px>0 or py>0:
+                self.canvas.move(id, px, py)
+            if step<end:
+                self.canvas.after(1, lambda : diff_move(id, x0+dx, y0+dy, dx, dy, step+1, end))
+>>>>>>> 81b28be04fa8f8858b6dd1983b5fa521ceaaba17
 
         if time==None:
             self.canvas.move(id, dx, dy)
             return
 
         elif isinstance(time, int):
+<<<<<<< HEAD
             dx=delx/time*r_rate
             dy=dely/time*r_rate
             print(self.canvas.coords(id), dx, dy)
             x0, y0 = self.canvas.coords(id)
             diff_move(id, x0, y0, dx, dy, 0, time)
+=======
+            dx=delx/time
+            dy=dely/time
+            print(self.canvas.coords(id))
+            x0, y0 = self.canvas.coords(id)
+            diff_move(id,x0, y0, dx, dy, 0, time )
+
+>>>>>>> 81b28be04fa8f8858b6dd1983b5fa521ceaaba17
         else:
             raise TypeError("time must be a positive integer")
 
 
+<<<<<<< HEAD
+=======
+
+
+
+
+
+>>>>>>> 81b28be04fa8f8858b6dd1983b5fa521ceaaba17
     def decorate_functions(self, functions):
         def open_image(path):
             image=functions["open"](path)
@@ -296,9 +325,16 @@ class GUI(Tk):
 
 
         def shuffle_image(dims):
+<<<<<<< HEAD
             image=functions["shuffle"](self.images, dims=dims)
 
             ids=self.plot_image(image, dims)
+=======
+            #image=functions["shuffle"](self.images, dims=dims)
+
+            id=self.plot_image(self.images[0])[0]
+            self.move_image(id, 30, 50, 2000)
+>>>>>>> 81b28be04fa8f8858b6dd1983b5fa521ceaaba17
 
             self.distortbutton.configure(state="enabled")
             self.shufflebutton.configure(state="disabled")
