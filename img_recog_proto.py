@@ -1,36 +1,9 @@
 import numpy as np
-from numpy.linalg import norm
-import cv2
 from random import normalvariate as nrand
 from random import sample, random
-from PIL import Image
 from numba import cuda, guvectorize
-from pathlib import Path
 import math
-
-def openimg(filepath):
-    def bgr_to_rgb(image):
-        b,g,r=np.split(image, 3, axis=2)
-        return np.concatenate((r,g,b), axis=2)
-
-    try:
-        mypath=Path(filepath)
-        if not(mypath.is_file()):
-            raise IOError("That file doesn't exist!")
-        return bgr_to_rgb(cv2.imread(filepath, 1))
-    except IOError as e:
-        print(e)
-
-
-def writeimg(name, image):
-    def rgb_to_bgr(image):
-        r,g,b=np.split(image, 3, axis=2)
-        return np.concatenate((b,g,r), axis=2)
-    try:
-        if not(isinstance(image, np.adarray) and len(image.shape)==4): raise TypeError("File is illegible as image!")
-        cv2.imwrite(name, rgb_to_bgr(image))
-    except TypeError as e:
-        print(e)
+from utils import *
 
 
 def img_split(image_or_path, dims):

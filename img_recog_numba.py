@@ -3,7 +3,10 @@ from datetime import datetime
 import numpy as np
 import cv2
 from image_obj import *
+from utils import *
 
+
+DEFAULTS={"debug_mode":False, "threshold":None, "iterator":False}
 
 @cuda.jit(device=True)
 def compare_pixel(pixela, pixelb):
@@ -36,10 +39,7 @@ def compare(dimga, dimgb, **params):
 
 def locate_one_piece(dpiece, solution, **params):
     """Will only receive preprocessed device arrays!"""
-    if not("debug_mode" in params):
-        params["debug_mode"]=False
-    if not("threshold" in params):
-        params["threshold"]=None
+    params=param_check(params, DEFAULTS)
 
     if params["debug_mode"]==True:
         start=datetime.now()
@@ -82,8 +82,8 @@ def locate_one_piece(dpiece, solution, **params):
 
 
 def preprocess_pieces(pieces, solution, pooling=None, **params):
-    if not("debug_mode" in params):
-        params["debug_mode"]=False
+    params=param_check(params, DEFAULTS)
+
     if params["debug_mode"]==True:
         start=datetime.now()
 
@@ -110,10 +110,7 @@ def find_match(dto_match, dpieces, availability=None, **params):
     """Will only receive preprocessed device arrays! \n
         Returns the index of best matching piece from array pieces."""
 
-    if not("debug_mode" in params):
-        params["debug_mode"]=False
-    if not("threshold" in params):
-        params["threshold"]=None
+    params=param_check(params, DEFAULTS)
 
     if params["debug_mode"]==True:
         start=datetime.now()
@@ -168,9 +165,7 @@ def resize_batch(pieces, size, **params):
 
 
 def locate_pieces(pieces, solution, pooling=None, **params):
-    if not("debug_mode" in params):
-        params["debug_mode"]=False
-
+    params=param_check(params, DEFAULTS)
 
     p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
@@ -189,12 +184,26 @@ def locate_pieces(pieces, solution, pooling=None, **params):
     return (ordered_pieces, np.array(p_solution.locations))
 
 
-def full_solve(pieces, solution, pooling=None, **params):
-    if not("debug_mode" in params):
-        params["debug_mode"]=False
-    if not("iterator" in params):
-        params["iterator"]=True
+def locate_pieces_iterator(pieces, solution, pooling=None, **params):
+    params=param_check(params, DEFAULTS)
 
+    p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
+    dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
+
+    ordered_pieces=[]
+
+    if params["debug_mode"]==True:
+        print("{0:<15s}{1:<15s}{2:<15s}{3:<15s}{4:<15s}".format("Piece index", "Max res.", "2nd max res.", "Min res.", "Runtime (ms)"))
+
+    for i in range(len(p_solution.locations)):
+        if params["debug_mode"]==True:
+            params["index"]=i
+
+        index=find_match(p_solution.dpieces[i], dpieces, p_solution.availability, **params)
+        yield(pieces[index], p_solution.locations[i])
+
+def full_solve(pieces, solution, pooling=None, **params):
+    params=param_check(params, DEFAULTS)
 
     if params["debug_mode"]==True:
         start=datetime.now()
@@ -252,9 +261,8 @@ def max_pool_unit(image, pooling, stride, pooled):
 
 
 def pool(images_or_solution, pooling, stride, **params):
+    params=param_check(params, DEFAULTS)
 
-    if not("debug_mode" in params):
-        params["debug_mode"]=False
     if params["debug_mode"]==True:
         start=datetime.now()
 
@@ -284,8 +292,6 @@ def pool_image(image, pooling, stride, **params):
         image    ndarray \n
         pooling  tuple of int of len=2 \n
         stride   tuple of int of len=2 \n """
-
-
 
     if not(pooling[0]>=stride[0] and pooling[1]>=stride[1]): raise TypeError("Pooling and stride inputs should be ndarray-like")
     if not(len(image.shape)==3): raise TypeError("Image must be a 3D ndarray.")
