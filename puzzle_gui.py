@@ -299,10 +299,6 @@ class GUI(Tk):
             image=functions["shuffle"](self.images, dims=dims)
 
             ids=self.plot_image(image, dims)
-            #self.move_image(ids[0], 30, 50, 500)
-            self.move_image(ids[0], 30, -50, 1500)
-            self.move_image(ids[1], 30, -60, 500)
-            self.move_image(ids[2], 20, 50, 1000)
 
             self.distortbutton.configure(state="enabled")
             self.shufflebutton.configure(state="disabled")
