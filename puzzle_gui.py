@@ -95,7 +95,7 @@ class GUI(Tk):
 
         self.pathentry=ttk.Entry(openframe)
         self.pathentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
-        self.pathentry.insert(0,"puzzle.jpg")
+        self.pathentry.insert(0,"images\puzzle.jpg")
 
         self.openbutton=ttk.Button(openframe, text="Open", width=20)
         self.openbutton.configure(command=lambda: functions["open"](self.pathentry.get()))
@@ -195,9 +195,6 @@ class GUI(Tk):
         if not("clear" in params):
             params["clear"]=True
 
-        if params["clear"]==True:
-            self.canvas.delete(self.canvas.find_all())
-
         if len(np.array(images).shape)==4:
             assert dims[0]*dims[1]==len(images)
         elif len(np.array(images).shape)==3:
@@ -205,6 +202,10 @@ class GUI(Tk):
             images=[images]
         else:
             raise Exception("Invalid image object")
+
+        if params["clear"]==True:
+            self.canvas.delete(self.canvas.find_all())
+
         center=(400, 300)
 
         #This should go before resizing!
@@ -255,6 +256,30 @@ class GUI(Tk):
             raise TypeError("Images must be an ndarray or list of ndarrays")
 
 
+    def move_image(self, id, delx, dely, time=None, r_rate=10):
+        def diff_move(id, x0, y0, dx, dy, step, end):
+            px=round(x0+dx-round(x0))
+            py=round(y0+dy-round(y0))
+            print(px, py)
+            if abs(px)>0 or abs(py)>0:
+                self.canvas.move(id, px, py)
+            if step<end:
+                self.canvas.after(r_rate, lambda : diff_move(id, x0+dx, y0+dy, dx, dy, step+r_rate, end))
+
+        if time==None:
+            self.canvas.move(id, dx, dy)
+            return
+
+        elif isinstance(time, int):
+            dx=delx/time*r_rate
+            dy=dely/time*r_rate
+            print(self.canvas.coords(id), dx, dy)
+            x0, y0 = self.canvas.coords(id)
+            diff_move(id, x0, y0, dx, dy, 0, time)
+        else:
+            raise TypeError("time must be a positive integer")
+
+
     def decorate_functions(self, functions):
         def open_image(path):
             image=functions["open"](path)
@@ -265,12 +290,19 @@ class GUI(Tk):
             self.image_path=path
 
             self.shufflebutton.configure(state="enabled")
-
             self.distortbutton.configure(state="enabled")
+
+            return ids
+
 
         def shuffle_image(dims):
             image=functions["shuffle"](self.images, dims=dims)
-            self.plot_image(image, dims=dims)
+
+            ids=self.plot_image(image, dims)
+            #self.move_image(ids[0], 30, 50, 500)
+            self.move_image(ids[0], 30, -50, 1500)
+            self.move_image(ids[1], 30, -60, 500)
+            self.move_image(ids[2], 20, 50, 1000)
 
             self.distortbutton.configure(state="enabled")
             self.shufflebutton.configure(state="disabled")
