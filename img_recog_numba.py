@@ -209,7 +209,11 @@ def full_solve(pieces, solution, pooling=None, **params):
     if params["debug_mode"]==True:
         start=datetime.now()
 
-    solved=reassemble(sort_pieces(locate_pieces(pieces, solution, pooling, **params), solution.shape), solution.shape)
+    if params["iterator"]==False:
+        solved=reassemble(sort_pieces(locate_pieces(pieces, solution, pooling, **params), solution.shape), solution.shape)
+    else:
+        solved=locate_pieces_iterator(pieces, solution, pooling, **params)
+
 
     if params["debug_mode"]==True:
         print("Solving: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
