@@ -19,3 +19,14 @@ class Solution(object):
         self.locations=np.array([(i,j) for i in range(dims[0]) for j in range(dims[1])])
         self.availability=[True]*dims[0]*dims[1]
         self.shape=dims
+
+class Piece(object):
+
+    def __init__(self, image, id, location=None):
+        if not(isinstance(image, np.ndarray)): raise TypeError("image must be an array")
+        self.array=image
+        self.id=id
+        self.location=location
+
+    def __get__():
+        return self.array
