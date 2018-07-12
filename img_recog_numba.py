@@ -184,7 +184,7 @@ def locate_pieces(pieces, solution, pooling=None, **params):
     return (ordered_pieces, np.array(p_solution.locations))
 
 
-def locate_pieces_iterator(pieces, solution, pooling=None, **params):
+def locate_pieces_iterator(pieces, solution, ids, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 
     p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
@@ -198,12 +198,12 @@ def locate_pieces_iterator(pieces, solution, pooling=None, **params):
     for i in range(len(p_solution.locations)):
         if params["debug_mode"]==True:
             params["index"]=i
-
         index=find_match(p_solution.dpieces[i], dpieces, p_solution.availability, **params)
-        yield(pieces[index], p_solution.locations[i])
+        piece=Piece(pieces[index], ids[index], p_solution.locations[i])
+        yield(piece)
 
 
-def full_solve(pieces, solution, pooling=None, **params):
+def full_solve(pieces, solution, pooling=None, ids=None, **params):
     params=param_check(params, DEFAULTS)
 
     if params["debug_mode"]==True:
@@ -211,9 +211,9 @@ def full_solve(pieces, solution, pooling=None, **params):
 
     if params["iterator"]==False:
         solved=reassemble(sort_pieces(locate_pieces(pieces, solution, pooling, **params), solution.shape), solution.shape)
-    else:
-        solved=locate_pieces_iterator(pieces, solution, pooling, **params)
-
+    elif isinstance(ids, list):
+        solved=locate_pieces_iterator(pieces, solution, ids, pooling, **params)
+    else: raise RuntimeError()
 
     if params["debug_mode"]==True:
         print("Solving: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")

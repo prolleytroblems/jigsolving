@@ -9,16 +9,16 @@ brightness_delta=30
 
 def open(path):
     return openimg(path)
+
 def distort(images, delta, mode):
     return [protodistort(image, 10, mode) for image in images]
 
 def split_shuffle(images, dims):
     return shuffle(images, dims)
 
-def solve(path, pieces, dims, pooling=5):
-    solved=full_solve(np.array(pieces), Solution(path, dims), pooling, debug_mode=True, iterator=True)
-    end=np.array(list(solved))
-    return end
+def solve(path, pieces, dims, pooling=5, ids=None):
+    solved=full_solve(np.array(pieces), Solution(path, dims), pooling=pooling, ids=ids, debug_mode=True, iterator=True)
+    return solved
 
 functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
 
