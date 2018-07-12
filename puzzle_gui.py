@@ -5,6 +5,7 @@ from time import sleep
 import cv2
 import numpy as np
 import re
+from datetime import datetime
 
 
 class GUI(Tk):
@@ -274,10 +275,9 @@ class GUI(Tk):
         if step<end:
             if abs(px)>0 or abs(py)>0:
                 self.canvas.move(id, px, py)
-            print("aaaa")
-            self.canvas.after(dt, lambda : self._diff_move(id, x0+dx, y0+dy, dx, dy, step+dt, dt, end))
+            self.after(dt, lambda : self._diff_move(id, x0+dx, y0+dy, dx, dy, step+dt, dt, end))
         else:
-            print(rx, ry)
+            pass
 
 
     def move_image(self, id, delx, dely, time=None, r_rate=10):
@@ -296,7 +296,6 @@ class GUI(Tk):
     def move_piece(self, id, target_location):
         target_coords = self.locations[target_location[0], target_location[1]]
         current_coords = self.canvas.coords( id )
-        print(target_coords, current_coords)
         delx, dely = ( target_coords[0] - current_coords[0], target_coords[1] - current_coords[1] )
         self.move_image( id, delx, dely, time=500)
 
@@ -328,25 +327,27 @@ class GUI(Tk):
             self.plot_image(image, dims=self.dims)
 
         def solve_puzzle(pooling=None):
-            images=functions["solve"](self.image_path, self.images, dims=self.dims,
-                                    pooling=pooling, ids=self.ids)
 
+            images=functions["solve"](self.image_path, self.images, dims=self.dims,
+                                    pooling=pooling, ids=self.ids, iterator=True)
+            images=iter(list(images))
 
             self.shufflebutton.configure(state="disabled")
             self.solvebutton.configure(state="disabled")
             self.shufflebutton.configure(state="enabled")
 
-            self.plot_pieces(images)
+            self.plot_pieces(images, datetime.now())
 
         new_functions={"open": open_image, "shuffle": shuffle_image, "distort": distort_image, "solve": solve_puzzle}
 
         return new_functions
 
-    def plot_pieces(self, iterator):
+    def plot_pieces(self, iterator, start):
         try:
             image=next(iterator)
             self.move_piece(image.id, image.location)
-            self.after(10, self.plot_pieces(iterator))
+            print((datetime.now()-start).seconds*1000+(datetime.now()-start).microseconds/1000)
+            self.after(0, self.plot_pieces(iterator, start))
         except StopIteration:
             pass
 

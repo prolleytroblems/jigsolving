@@ -16,7 +16,7 @@ def distort(images, delta, mode):
 def split_shuffle(images, dims):
     return shuffle(images, dims)
 
-def solve(path, pieces, dims, pooling=5, ids=None):
+def solve(path, pieces, dims, pooling=5, ids=None, **params):
     solved=full_solve(np.array(pieces), Solution(path, dims), pooling=pooling, ids=ids, debug_mode=True, iterator=True)
     return solved
 
