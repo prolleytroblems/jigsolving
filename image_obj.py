@@ -20,10 +20,13 @@ class Solution(object):
         self.availability=[True]*dims[0]*dims[1]
         self.shape=dims
 
+
+
 class Piece(object):
     def __init__(self, image, id, location=None):
         if not(isinstance(image, np.ndarray)): raise TypeError("image must be an array")
         self.array=image
+        self.tkimage=None
         self.id=id
         self.location=location
         self.ilocation=None

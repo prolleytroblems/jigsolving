@@ -7,7 +7,7 @@ import numpy as np
 import re
 from image_obj import Piece
 from datetime import datetime
-
+from pieceCanvas import PieceCanvas
 
 class GUI(Tk):
     """A simple gui for prototyping"""
@@ -180,7 +180,7 @@ class GUI(Tk):
 
         #--------------------------
 
-        self.canvas=Canvas(mainframe)
+        self.canvas=PieceCanvas(mainframe)
         self.canvas.configure(height=600, width=800)
         self.canvas.grid(column=0, row=0, sticky=(N, W, E, S))
 
@@ -251,43 +251,9 @@ class GUI(Tk):
         self.pieces=pieces
 
 
-    def find_plot_locations(self, dims, piece_shape, center=(400,300), reference="center"):
-        if reference=="center":
-            full_size=np.array((piece_shape[1]*dims[1], piece_shape[0]*dims[0]))
-            centers=np.array([(x*piece_shape[1], y*piece_shape[0]) for y in range(dims[0]) for x in range(dims[1])])
-            centers+=center-full_size//2+(piece_shape[1]//2,piece_shape[0]//2)
-            return centers
-
-        else: raise NotImplementedError()
 
 
-    @staticmethod
-    def resize_for_canvas(images, dims, size=(640,480)):
-        if isinstance(images, np.ndarray):
-            assert len(shape(images))==3
-            shape=images.shape
-            if shape[1]*dims[1] / shape[0]*dims[0] >= 1:
-                ratio = size[0] / dims[1] / shape[1]
-                new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
-            elif shape[1]*dims[1] / shape[0]*dims[0] < 1:
-                ratio = size[1] / dims[0] / shape[0]
-                new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
-            return (cv2.resize(images, new_shape), ratio)
 
-        elif isinstance(images, list):
-            shape=images[0].shape
-            if shape[1]*dims[1] / shape[0]*dims[0] >= 1:
-                ratio = size[0] / dims[1] / shape[1]
-                new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
-            elif shape[1]*dims[1] / shape[0]*dims[0] < 1:
-                ratio = size[1] / dims[0] / shape[0]
-                new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
-            resized=[]
-            for image in images:
-                resized.append(cv2.resize(image, new_shape))
-            return (resized, ratio)
-        else:
-            raise TypeError("Images must be an ndarray or list of ndarrays")
 
 
     def _diff_move(self, id, x0, y0, dx, dy, step, dt, end):
@@ -331,7 +297,7 @@ class GUI(Tk):
     def decorate_functions(self, functions):
         def open_image(path):
             image=functions["open"](path)
-            self.plot_image(image, dims=(1,1))
+            self.canvas.plot_image(image, dims=(1,1))
             self.detailslabel.configure(text="Size: " + str(image.shape[0])+" x " +
                                             str(image.shape[1]) + " pixels \nName: " +
                                             re.split(r"\\", path)[-1] + "\nFormat: "+re.split(r"\.", path)[-1])
@@ -369,6 +335,7 @@ class GUI(Tk):
 
         return new_functions
 
+
     def relocate_pieces(self, list_or_iterator, start):
         if isinstance(list_or_iterator, list):
             for piece in pieces:
@@ -380,7 +347,7 @@ class GUI(Tk):
                 piece=next(list_or_iterator)
                 self.move_piece(piece)
                 print((datetime.now()-start).seconds*1000+(datetime.now()-start).microseconds/1000)
-                self.after(0, self.relocate_pieces(list_or_iterator, start))
+                self.after(0, self.relocat_pieces(list_or_iterator, start))
             except StopIteration:
                 pass
 
