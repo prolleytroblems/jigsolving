@@ -4,37 +4,10 @@ from random import sample, random
 from numba import cuda, guvectorize
 import math
 from utils import *
+from image_obj import Piece
 
 
-def img_split(image_or_path, dims):
-    "Splits an image into rectangular, equally-sized pieces. Returns a list, not an ndarray."
-    if isinstance(image_or_path, str):
-        image=openimg(image_or_path)
-    elif isinstance(image_or_path, np.ndarray):
-        if len(image_or_path.shape)==3:
-            image=image_or_path
-        else:
-            raise TypeError("image_or_path must be of type str or np.ndarray")
-    else:
-        raise TypeError("image_or_path must be of type str or np.ndarray")
-
-    assert isinstance(dims, tuple)
-
-    pieces=[]
-    height=image.shape[0]/dims[0]
-    width=image.shape[1]/dims[1]
-    for y_split in range(dims[0]):
-        for x_split in range(dims[1]):
-            x_start=int(x_split*width)
-            x_end=x_start+int(width)
-            y_start=int(y_split*height)
-            y_end=y_start+int(height)
-
-            pieces.append(np.array(image[y_start: y_end, x_start: x_end]))
-    return pieces
-
-
-def shuffle(images, dims):
+def shuffle_images(images, dims):
     """Shuffle the image into equal rectangular pieces"""
     images=np.array(images)
     if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple.")
@@ -50,13 +23,17 @@ def shuffle(images, dims):
     return
 
 
-def reassemble(pieces, dims):
-    """Reassembles ordered piece images into a full image"""
-    pieces=np.array(pieces)
-    if not(len(pieces.shape)==4): raise TypeError("pieces must be a 4-dimensional ndarray-like object")
-    if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple")
-    image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
-    return image
+def shuffle_pieces(pieces, dims):
+    """Shuffle the pieces into equal rectangular pieces"""
+    if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple.")
+
+    if len(pieces)==dims[0]*dims[1]:
+        return sample(pieces, dims[0]*dims[1])
+    else:
+        images=np.array(list(piece.array for piece in pieces))
+        reconstructed=reassemble(images, dims)
+        new_pieces=[Piece(image, None, None) for image in img_split(reconstructed, dims)]
+        return sample(new_pieces, dims[0]*dims[1])
 
 
 def distort(image, delta, distortion):

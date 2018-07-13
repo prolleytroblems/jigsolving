@@ -5,6 +5,7 @@ from time import sleep
 import cv2
 import numpy as np
 import re
+from image_obj import Piece
 from datetime import datetime
 
 
@@ -16,7 +17,7 @@ class GUI(Tk):
         if not("decorate" in params):
             params["decorate"]=True
         super().__init__()
-        self.images=None
+        self.pieces=None
         self.dims=None
         if params["decorate"]==True:
             self.start(self.decorate_functions(functions))
@@ -191,6 +192,32 @@ class GUI(Tk):
         self.solvebutton.configure(state="disabled")
 
 
+    def plot_pieces(self, pieces, dims=(1,1), **params):
+        "plots an image or equally sized pieces of an image into a canvas object"
+        if not("clear" in params):
+            params["clear"]=True
+
+        if not(len(pieces)==dims[0]*dims[1]): raise Exception("Invalid image object")
+
+        if params["clear"]==True:
+            self.canvas.delete(self.canvas.find_all())
+
+        center=(400, 300)
+
+        #This should go before resizing!
+        images=[piece.array for piece in pieces]
+        resized_images, ratio = GUI.resize_for_canvas( images, dims, (640, 480) )
+        centers = self.find_plot_locations(dims, (resized_images[0].shape[0], resized_images[0].shape[1]), center)
+        self.locations=np.reshape(centers, (dims[0], dims[1], 2))
+        self.canvas.tkimages=[ImageTk.PhotoImage(Image.fromarray(image)) for image in resized_images]
+
+        for piece, tkimage, piece_center in zip(pieces, self.canvas.tkimages, centers):
+            piece.id, piece.location = ( self.canvas.create_image(piece_center[0], piece_center[1], image=tkimage), piece_center )
+
+        self.dims=dims
+        self.pieces=pieces
+
+
     def plot_image(self, images, dims=(1,1), **params):
         "plots an image or equally sized pieces of an image into a canvas object"
         if not("clear" in params):
@@ -210,22 +237,18 @@ class GUI(Tk):
         center=(400, 300)
 
         #This should go before resizing!
-        self.images=images
-        self.dims=dims
-
-        images, ratio=GUI.resize_for_canvas(images, dims, (640, 480))
-
-        centers=self.find_plot_locations(dims, (images[0].shape[0], images[0].shape[1]), center)
-
+        resized_images, ratio=GUI.resize_for_canvas(images, dims, (640, 480))
+        centers=self.find_plot_locations(dims, (resized_images[0].shape[0], resized_images[0].shape[1]), center)
         self.locations=np.reshape(centers, (dims[0], dims[1], 2))
+        self.canvas.tkimages=[ImageTk.PhotoImage(Image.fromarray(image)) for image in resized_images]
 
-        self.canvas.tkimages=[ImageTk.PhotoImage(Image.fromarray(image)) for image in images]
+        pieces=[]
+        for image, tkimage, piece_center in zip(images, self.canvas.tkimages, centers):
+            id=self.canvas.create_image(piece_center[0], piece_center[1], image=tkimage)
+            pieces.append(Piece(image, id, location=piece_center))
 
-        ids=[]
-        for image, piece_center in zip(self.canvas.tkimages, centers):
-            ids.append(self.canvas.create_image(piece_center[0], piece_center[1], image=image))
-        self.ids=ids
-        return ids
+        self.dims=dims
+        self.pieces=pieces
 
 
     def find_plot_locations(self, dims, piece_shape, center=(400,300), reference="center"):
@@ -241,21 +264,22 @@ class GUI(Tk):
     @staticmethod
     def resize_for_canvas(images, dims, size=(640,480)):
         if isinstance(images, np.ndarray):
+            assert len(shape(images))==3
             shape=images.shape
-            if shape[1]/shape[0]>=1:
+            if shape[1]*dims[1] / shape[0]*dims[0] >= 1:
                 ratio = size[0] / dims[1] / shape[1]
                 new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
-            elif shape[1]/shape[0]<1:
+            elif shape[1]*dims[1] / shape[0]*dims[0] < 1:
                 ratio = size[1] / dims[0] / shape[0]
                 new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
             return (cv2.resize(images, new_shape), ratio)
 
         elif isinstance(images, list):
             shape=images[0].shape
-            if shape[1]/shape[0]>=1:
+            if shape[1]*dims[1] / shape[0]*dims[0] >= 1:
                 ratio = size[0] / dims[1] / shape[1]
                 new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
-            elif shape[1] / shape[0] < 1:
+            elif shape[1]*dims[1] / shape[0]*dims[0] < 1:
                 ratio = size[1] / dims[0] / shape[0]
                 new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
             resized=[]
@@ -293,29 +317,32 @@ class GUI(Tk):
             raise TypeError("time must be a positive integer")
 
 
-    def move_piece(self, id, target_location):
+    def move_piece(self, piece, target_location=None):
+        if target_location==None:
+            target_location=piece.ilocation
         target_coords = self.locations[target_location[0], target_location[1]]
-        current_coords = self.canvas.coords( id )
+        current_coords = piece.location
         delx, dely = ( target_coords[0] - current_coords[0], target_coords[1] - current_coords[1] )
-        self.move_image( id, delx, dely, time=500)
+        self.move_image( piece.id, delx, dely, time=500)
+        piece.location=target_coords
+        piece.ilocation=None
 
 
     def decorate_functions(self, functions):
         def open_image(path):
             image=functions["open"](path)
-            ids=self.plot_image(image, dims=(1,1))
+            self.plot_image(image, dims=(1,1))
             self.detailslabel.configure(text="Size: " + str(image.shape[0])+" x " +
                                             str(image.shape[1]) + " pixels \nName: " +
                                             re.split(r"\\", path)[-1] + "\nFormat: "+re.split(r"\.", path)[-1])
             self.image_path=path
             self.shufflebutton.configure(state="enabled")
             self.distortbutton.configure(state="enabled")
-            return ids
 
         def shuffle_image(dims):
-            image=functions["shuffle"](self.images, dims=dims)
+            pieces=functions["shuffle"](self.pieces, dims=dims)
 
-            self.plot_image(image, dims)
+            self.plot_pieces(pieces, dims)
 
             self.distortbutton.configure(state="enabled")
             self.shufflebutton.configure(state="disabled")
@@ -323,33 +350,39 @@ class GUI(Tk):
 
         def distort_image(delta, mode):
             modedict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g", "Shape":"s"}
-            image=functions["distort"](self.images, delta, modedict[mode])
-            self.plot_image(image, dims=self.dims)
+            pieces=functions["distort"](self.pieces, delta, modedict[mode])
+            self.plot_pieces(pieces, dims=self.dims)
 
         def solve_puzzle(pooling=None):
 
-            images=functions["solve"](self.image_path, self.images, dims=self.dims,
-                                    pooling=pooling, ids=self.ids, iterator=True)
-            images=iter(list(images))
+            pieces=functions["solve"](self.image_path, self.pieces, dims=self.dims,
+                                    pooling=pooling, iterator=True)
+            pieces=iter(list(pieces))
 
             self.shufflebutton.configure(state="disabled")
             self.solvebutton.configure(state="disabled")
             self.shufflebutton.configure(state="enabled")
 
-            self.plot_pieces(images, datetime.now())
+            self.relocate_pieces(pieces, datetime.now())
 
         new_functions={"open": open_image, "shuffle": shuffle_image, "distort": distort_image, "solve": solve_puzzle}
 
         return new_functions
 
-    def plot_pieces(self, iterator, start):
-        try:
-            image=next(iterator)
-            self.move_piece(image.id, image.location)
-            print((datetime.now()-start).seconds*1000+(datetime.now()-start).microseconds/1000)
-            self.after(0, self.plot_pieces(iterator, start))
-        except StopIteration:
-            pass
+    def relocate_pieces(self, list_or_iterator, start):
+        if isinstance(list_or_iterator, list):
+            for piece in pieces:
+                self.move_piece(piece.id, piece.location)
+                print((datetime.now()-start).seconds*1000+(datetime.now()-start).microseconds/1000)
+                self.after(0, self.plot_pieces(iterator, start))
+        else:
+            try:
+                piece=next(list_or_iterator)
+                self.move_piece(piece)
+                print((datetime.now()-start).seconds*1000+(datetime.now()-start).microseconds/1000)
+                self.after(0, self.relocate_pieces(list_or_iterator, start))
+            except StopIteration:
+                pass
 
 def main():
     window=GUI({"solve":lambda x:x, "shuffle":lambda x:x, "open":lambda x:x})

@@ -164,14 +164,12 @@ def resize_batch(pieces, size, **params):
     return np.array(resized)
 
 
-def locate_pieces(pieces, solution, pooling=None, ids=None, **params):
+def locate_pieces(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 
-    if params["iterator"]==True and ids==None:
-        raise Exception("Iterator mode requires piece idss")
-
-    p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
-    dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
+    arrays=np.array([piece.array for piece in pieces])
+    p_arrays, p_solution = preprocess_pieces(arrays, solution, pooling, **params)
+    darrays = cuda.to_device(np.ascontiguousarray(p_arrays))
 
     ordered_pieces=[]
 
@@ -182,18 +180,18 @@ def locate_pieces(pieces, solution, pooling=None, ids=None, **params):
         if params["debug_mode"]==True:
             params["index"]=i
 
-        index=find_match(p_solution.dpieces[i], dpieces, p_solution.availability, **params)
+        index=find_match(p_solution.dpieces[i], darrays, p_solution.availability, **params)
+        pieces[index].ilocation=p_solution.locations[i]
         if params["iterator"]==True:
-            piece=Piece(pieces[index], ids[index], p_solution.locations[i])
-            yield(piece)
+            yield(pieces[index])
         else:
             ordered_pieces.append(pieces[index])
 
     if params["iterator"]==False:
-        return (ordered_pieces, np.array(p_solution.locations))
+        return ordered_pieces
 
 
-def full_solve(pieces, solution, pooling=None, ids=None, **params):
+def full_solve(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 
     if params["debug_mode"]==True:
@@ -201,8 +199,8 @@ def full_solve(pieces, solution, pooling=None, ids=None, **params):
 
     if params["iterator"]==False:
         solved=reassemble(sort_pieces(locate_pieces(pieces, solution, pooling=pooling, **params), solution.shape), solution.shape)
-    elif isinstance(ids, list):
-        solved=locate_pieces(pieces, solution, ids=ids, pooling=pooling, **params)
+    elif isinstance(pieces[0], Piece):
+        solved=locate_pieces(pieces, solution, pooling=pooling, **params)
     else: raise RuntimeError()
 
     if params["debug_mode"]==True:

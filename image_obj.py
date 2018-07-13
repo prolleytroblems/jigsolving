@@ -1,6 +1,6 @@
 from numba import cuda
 import numpy as np
-from img_recog_proto import img_split
+from utils import img_split
 
 
 class Solution(object):
@@ -21,12 +21,12 @@ class Solution(object):
         self.shape=dims
 
 class Piece(object):
-
     def __init__(self, image, id, location=None):
         if not(isinstance(image, np.ndarray)): raise TypeError("image must be an array")
         self.array=image
         self.id=id
         self.location=location
+        self.ilocation=None
 
     def __get__():
         return self.array
