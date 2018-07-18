@@ -39,6 +39,21 @@ def gcompare(imga, imgb, C):
     C[y,x]=compare_pixel(imga[y,x], imgb[y,x])
 
 
+@cuda.jit(device=True)
+def compare_xcorr_color(colora, colorb, means):
+    c=(colora-means[0])*(colorb-means[1])
+    return c
+
+
+@cuda.jit
+def gcompare_xcorr(imga, imgb, means, C):
+    y, x = cuda.grid(2)
+    if y>=imga.shape[0] or x>=imga.shape[1]:
+        return
+    for i in range(3):
+        C[y,x,i]=compare_xcorr_color(imga[y,x,i], imgb[y,x,i], means[:,i])
+
+
 def compare(dimga, dimgb, **params):
     tpb = 16
     bpgy = (dimga.shape[0]-1)//tpb+1
@@ -46,9 +61,43 @@ def compare(dimga, dimgb, **params):
 
     C=np.array(np.zeros(dimga.shape[0:2]), dtype=np.float32)
 
-    gcompare[(bpgy, bpgx), (tpb, tpb)](np.ascontiguousarray(dimga), np.ascontiguousarray(dimgb), C)
+    gcompare[(bpgy, bpgx), (tpb, tpb)](dimga, dimgb, C)
 
     return 1-np.sum(C)/(dimga.shape[0]*dimga.shape[1]*442)
+
+
+def statistics(array):
+    means=[]
+    stds=[]
+    for i in range(3):
+        means.append(array[:,:,i].mean())
+        stds.append(array[:,:,i].std())
+    return (means, stds)
+
+
+def compare_xcorr(imga, imgb, dimga, dimgb, **params):
+
+    means_a, stds_a = statistics(imga)
+    means_b, stds_b = statistics(imgb)
+    N=imga.shape[0]*imga.shape[1]
+    means=np.array((means_a, means_b))
+
+    tpb = 16
+    bpgy = (dimga.shape[0]-1)//tpb+1
+    bpgx = (dimga.shape[1]-1)//tpb+1
+
+    C=np.array(np.zeros(dimga.shape), dtype=np.float32)
+    gcompare_xcorr[(bpgy, bpgx), (tpb, tpb)](dimga, dimgb, means, C)
+
+    xcorr=[]
+    for i in range(3):
+        div=( (N-1) * stds_a[i] * stds_b[i])
+        if div!=0:
+            xcorr.append(np.sum( C[:,:,i]) / div)
+        else:
+            xcorr.append(np.sum( C[:,:,i]) / ( div + 0.00001 ))
+
+    return sum(xcorr)/3
 
 
 def locate_one_piece(dpiece, solution, **params):
@@ -61,11 +110,15 @@ def locate_one_piece(dpiece, solution, **params):
     if params["debug_mode"]==True:
         start=datetime.now()
 
+    piece=dpiece.copy_to_host()
+
+
     max_resemblance=[0, None, 0, 1]
     #maximum resemblance, location index, second max resemblance(for debugging), min resemblance (for debugging)
 
     for i in range(solution.dpieces.shape[0]):
         if solution.availability[i]==True:
+            solutionpiece=solution.dpieces[i].copy_to_host()
             resemblance=compare(dpiece, solution.dpieces[i], **params)
 
             if resemblance>max_resemblance[0]:
@@ -138,12 +191,15 @@ def find_match(dto_match, dpieces, availability=None, **params):
         assert all(e==True or e==False for e in availability) and isinstance(availability, list)
         av_array=availability
 
-    max_resemblance=[0, None, 0, 1]
+    max_resemblance=[-1, None, -1, 1]
     #maximum resemblance, match index, second max resemblance(for debugging), min resemblance (for debugging)
-
+    solutionpiece=dto_match.copy_to_host()
     for i in range(dpieces.shape[0]):
-        if av_array[i]==True:
-            resemblance=compare(dpieces[i], dto_match, **params)
+
+        if True:
+            piece=dpieces[i].copy_to_host()
+
+            resemblance=compare_xcorr(piece, solutionpiece, dpieces[i], dto_match, **params)
 
             if resemblance>max_resemblance[0]:
                 if params["debug_mode"]==True:
