@@ -2,10 +2,11 @@ import numpy as np
 from numpy.linalg import norm
 import cv2
 from random import normalvariate as nrand
-from random import sample
+from random import sample, random
 from PIL import Image
 from numba import cuda, guvectorize
 from pathlib import Path
+import math
 
 def openimg(filepath):
     def bgr_to_rgb(image):
@@ -89,6 +90,8 @@ def distort(image, delta, distortion):
     if not(len(np.array(image.shape))==3): raise TypeError("Array is not legible as image")
     if distortion=="n":
         return b_distort(image, delta)
+    if distortion=="s":
+        return s_distort(image, delta)
     else:
         raise Exception("Not implemented!")
 
@@ -108,7 +111,32 @@ def b_distort(pixel, delta, res):
 
 def s_distort(image, delta):
     """Randomly alter the shape of an image"""
-    pass
+    def move_one(image, axis, side="end"):
+        assert axis==0 or axis==1
+        #add a blank row/column
+        coeff=[0,0]
+        coeff[-axis+1]=1
+        if side=="end":
+            image=np.concatenate((image, np.zeros(((image.shape[0]-1)*coeff[0]+1,
+                    (image.shape[1]-1)*coeff[1]+1, 3), dtype=np.uint8)), axis=axis)
+        elif side=="start":
+            image=np.concatenate((np.zeros(((image.shape[0]-1)*coeff[0]+1,
+                    (image.shape[1]-1)*coeff[1]+1, 3), dtype=np.uint8), image), axis=axis)
+        return image
+
+    direction=random()*math.pi*2
+    tx=int(math.cos(direction)*delta)
+    ty=int(math.sin(direction)*delta)
+    for axis, amount in enumerate([ty,tx]):
+        if amount <=0:
+            side="end"
+        else:
+            side="start"
+        for i in range(abs(amount)):
+            image=move_one(image, axis, side)
+
+
+    return image
 
 
 def ub_distribution(image, delta, fixed_points):
