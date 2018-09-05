@@ -5,6 +5,7 @@ from time import sleep
 import numpy as np
 import re
 from datetime import datetime
+from image_obj import *
 
 
 class GUI(Tk):
@@ -189,14 +190,15 @@ class GUI(Tk):
     def decorate_functions(self, functions):
         def open_image(path):
             image=functions["open"](path)
-            ids=self.canvas.plot_image(image, dims=(1,1))
+
+            pieces=PieceCollection(image, (1,1))
+            self.canvas.plot_pieces(pieces, dims=(1,1))
             self.detailslabel.configure(text="Size: " + str(image.shape[0])+" x " +
                                             str(image.shape[1]) + " pixels \nName: " +
                                             re.split(r"\\", path)[-1] + "\nFormat: "+re.split(r"\.", path)[-1])
             self.image_path=path
             self.shufflebutton.configure(state="enabled")
             self.distortbutton.configure(state="enabled")
-            return ids
 
         def shuffle_image(dims):
             image=functions["shuffle"](self.canvas.pieces, dims=dims)

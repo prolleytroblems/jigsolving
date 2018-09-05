@@ -11,46 +11,43 @@ class PuzzleCanvas(Canvas):
         super().__init__(master)
         self.configure( width=size[0], height=size[1] )
         self.usage=(floor(size[0]*usage), floor(size[1]*usage))
-        self.ids=None
+        self.size=size
         self.locations=None
         self.pieces=None
-        self.tkimages=None
 
 
-    def plot_image(self, images, dims=(1,1), **params):
-        "plots Piece objects"
+    def plot_pieces(self, collection, **params):
+        "plots Piece objects from a PieceCollection based on their order (location values are ignored)"
         if not("clear" in params):
             params["clear"]=True
 
-        if len(np.array(images).shape)==4:
-            assert dims[0]*dims[1]==len(images)
-        elif len(np.array(images).shape)==3:
-            assert dims[0]*dims[1]==1
-            images=[images]
-        else:
-            raise Exception("Invalid image object")
+        assert isinstance(collection, PieceCollection)
 
         if params["clear"]==True:
             self.delete(self.find_all())
 
-        center=(400, 300)
+        center=(self.size[1], self.size[0])
+        dims=collection.dims
 
-        #This should go before resizing!
-        self.pieces=PieceCollection(images, dims)
-
-        images, ratio=resize(images, dims, self.usage)
-
-        centers=self.find_plot_locations(dims, (images[0].shape[0], images[0].shape[1]), center)
-
+        self.resize_collection(collection)
+        images=collection.mass_get("plotted")
+        size=images[0].shape[0], images[0].shape[1]
+        centers = self.find_plot_locations(dims, size, center)
         self.locations=np.reshape(centers, (dims[0], dims[1], 2))
 
-        self.tkimages=[ImageTk.PhotoImage(Image.fromarray(image)) for image in images]
+        tkimages=[ImageTk.PhotoImage(Image.fromarray(image)) for image in images]
+
+        collection.mass_set("location", list(centers))
+        collection.mass_set("tkimage", tkimages)
 
         ids=[]
-        for image, piece_center in zip(self.tkimages, centers):
-            ids.append(self.create_image(piece_center[0], piece_center[1], image=image))
-        self.ids=ids
-        return ids
+
+        #plot the pieces
+        for piece, piece_center in zip(collection.get(), centers):
+            ids.append(self.create_image(piece_center[0], piece_center[1], image=piece.tkimage))
+
+        collection.mass_set("id", ids)
+
 
 
     def find_plot_locations(self, dims, piece_shape, center=(400,300), reference="center"):
@@ -61,6 +58,16 @@ class PuzzleCanvas(Canvas):
             return centers
 
         else: raise NotImplementedError()
+
+
+    def resize_collection(self, collection):
+        pieces=collection.get()
+        orig_images=[piece.array for piece in pieces]
+        new_images, ratio=resize(orig_images, collection.dims, self.usage)
+
+        collection.mass_set("plotted", new_images)
+
+        return collection
 
 
     def _diff_move(self, id, x0, y0, dx, dy, step, dt, end):

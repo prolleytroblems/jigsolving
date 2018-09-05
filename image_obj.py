@@ -22,23 +22,60 @@ class Solution(object):
 
 class Piece(object):
 
-    def __init__(self, image, id, location=None):
+    def __init__(self, image, id=None, location=None):
         if not(isinstance(image, np.ndarray)): raise TypeError("image must be an array")
         self.array=image
         self.id=id
         self.location=location
+        self.plotted=None
+        self.tkimage=None
 
     def __get__():
         return self.array
 
+
 class PieceCollection:
 
     def __init__(self, images, dims):
-        self._images=images
+        if len(np.array(images).shape)==4:
+            assert dims[0]*dims[1]==len(images)
+        elif len(np.array(images).shape)==3:
+            assert dims[0]*dims[1]==1
+            images=[images]
+        else:
+            raise Exception("Invalid image object")
+        self._pieces=[Piece(image) for image in images]
         self.dims=dims
 
     def get(self):
-        return self._images
+        return self._pieces
 
     def add(self, image):
-        self._images.insert(0, image)
+        self._pieces.insert(0, image)
+
+    def mass_set(self, attr, values):
+        assert len(values)==len(self._pieces)
+        if attr=="id":
+            for value, piece in zip(values, self._pieces):
+                piece.id=value
+        elif attr=="plotted":
+            for value, piece in zip(values, self._pieces):
+                piece.plotted=value
+        elif attr=="location":
+            for value, piece in zip(values, self._pieces):
+                piece.location=value
+        elif attr=="tkimage":
+            for value, piece in zip(values, self._pieces):
+                piece.tkimage=value
+
+    def mass_get(self, attr):
+        if attr=="id":
+            return([piece.id for piece in self._pieces])
+        elif attr=="plotted":
+            return([piece.plotted for piece in self._pieces])
+        elif attr=="location":
+            return([piece.location for piece in self._pieces])
+        elif attr=="tkimage":
+            return([piece.tkimage for piece in self._pieces])
+        elif attr=="image":
+            return([piece.array for piece in self._pieces])

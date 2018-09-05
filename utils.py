@@ -2,7 +2,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-
 def param_check(params, defaults):
     if not(isinstance(params, dict) and isinstance(defaults, dict)): raise TypeError("Both inputs must be dictionaries.")
 
@@ -61,5 +60,6 @@ def resize(images, dims, size):
         for image in images:
             resized.append(cv2.resize(image, new_shape))
         return (resized, ratio)
+
     else:
         raise TypeError("Images must be an ndarray or list of ndarrays")
