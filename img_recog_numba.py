@@ -46,12 +46,12 @@ def compare_xcorr_color(colora, colorb, means):
 
 
 @cuda.jit
-def gcompare_xcorr(imga, imgb, means, C):
+def gcompare_xcorr(imga, imgb, means, C, weights):
     y, x = cuda.grid(2)
     if y>=imga.shape[0] or x>=imga.shape[1]:
         return
     for i in range(3):
-        C[y,x,i]=compare_xcorr_color(imga[y,x,i], imgb[y,x,i], means[:,i])
+        C[y,x,i]=compare_xcorr_color(imga[y,x,i], imgb[y,x,i], means[:,i]) * weights[i]
 
 
 def compare(dimga, dimgb, **params):
@@ -75,7 +75,7 @@ def statistics(array):
     return (means, stds)
 
 
-def compare_xcorr(imga, imgb, dimga, dimgb, **params):
+def compare_xcorr(imga, imgb, dimga, dimgb, weights=np.array((1,1,1), dtype=np.float32), **params):
 
     means_a, stds_a = statistics(imga)
     means_b, stds_b = statistics(imgb)
@@ -87,7 +87,7 @@ def compare_xcorr(imga, imgb, dimga, dimgb, **params):
     bpgx = (dimga.shape[1]-1)//tpb+1
 
     C=np.array(np.zeros(dimga.shape), dtype=np.float32)
-    gcompare_xcorr[(bpgy, bpgx), (tpb, tpb)](dimga, dimgb, means, C)
+    gcompare_xcorr[(bpgy, bpgx), (tpb, tpb)](dimga, dimgb, means, C, weights)
 
     xcorr=[]
     for i in range(3):

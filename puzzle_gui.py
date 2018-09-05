@@ -95,7 +95,7 @@ class GUI(Tk):
 
         self.pathentry=ttk.Entry(openframe)
         self.pathentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
-        self.pathentry.insert(0,"images/puzzle.jpg")
+        self.pathentry.insert(0,"images/bridge2.jpg")
 
         self.openbutton=ttk.Button(openframe, text="Open", width=20)
         self.openbutton.configure(command=lambda: functions["open"](self.pathentry.get()))
