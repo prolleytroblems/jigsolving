@@ -5,6 +5,7 @@ from time import sleep
 import cv2
 import numpy as np
 import re
+from image_mng import *
 from datetime import datetime
 
 
@@ -16,8 +17,7 @@ class GUI(Tk):
         if not("decorate" in params):
             params["decorate"]=True
         super().__init__()
-        self.images=None
-        self.dims=None
+        self.pieces=None
         if params["decorate"]==True:
             self.start(self.decorate_functions(functions))
         else:
@@ -210,8 +210,7 @@ class GUI(Tk):
         center=(400, 300)
 
         #This should go before resizing!
-        self.images=images
-        self.dims=dims
+        self.pieces=PieceCollection(images, dims)
 
         images, ratio=GUI.resize_for_canvas(images, dims, (640, 480))
 
@@ -313,7 +312,7 @@ class GUI(Tk):
             return ids
 
         def shuffle_image(dims):
-            image=functions["shuffle"](self.images, dims=dims)
+            image=functions["shuffle"](self.pieces, dims=dims)
 
             self.plot_image(image, dims)
 
@@ -323,18 +322,20 @@ class GUI(Tk):
 
         def distort_image(delta, mode):
             modedict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g", "Shape":"s"}
-            image=functions["distort"](self.images, delta, modedict[mode])
-            self.plot_image(image, dims=self.dims)
+            image=functions["distort"](self.pieces, delta, modedict[mode])
+            self.plot_image(image, dims=self.pieces.dims)
 
         def solve_puzzle(pooling=None):
 
-            images=functions["solve"](self.image_path, self.images, dims=self.dims,
+            images=functions["solve"](self.image_path, self.pieces,
                                     pooling=pooling, ids=self.ids, iterator=True)
             images=iter(list(images))
 
             self.shufflebutton.configure(state="disabled")
             self.solvebutton.configure(state="disabled")
             self.shufflebutton.configure(state="enabled")
+
+            self.pieces=PieceCollection([], self.pieces.dims)
 
             self.plot_pieces(images, datetime.now())
 
@@ -346,8 +347,9 @@ class GUI(Tk):
         try:
             image=next(iterator)
             self.move_piece(image.id, image.location)
-            print((datetime.now()-start).seconds*1000+(datetime.now()-start).microseconds/1000)
+            #print((datetime.now()-start).seconds*1000+(datetime.now()-start).microseconds/1000)
             self.after(0, self.plot_pieces(iterator, start))
+            self.pieces.add(image.array)
         except StopIteration:
             pass
 

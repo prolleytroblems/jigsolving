@@ -34,17 +34,23 @@ def img_split(image_or_path, dims):
     return pieces
 
 
-def shuffle(images, dims):
+
+def _raw_shuffle(image, dims):
+    return sample(img_split(image, dims), dims[0]*dims[1])
+
+
+
+def shuffle(pieces, dims):
     """Shuffle the image into equal rectangular pieces"""
-    images=np.array(images)
+    images=np.array(pieces.get())
     if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple.")
     if len(images.shape)==4:
         if images.shape[0]==1:
-            return sample(img_split(images[0], dims), dims[0]*dims[1])
+            return _raw_shuffle(images[0], dims)
         else:
-            return shuffle(reassemble(images, dims), dims)
+            return _raw_shuffle(reassemble(images, pieces.dims), dims)
     elif len(images.shape)==3:
-        return sample(img_split(images, dims), dims[0]*dims[1])
+        return _raw_shuffle(images, dims)
     else:
         raise TypeError("Array is not legible as image.")
     return
@@ -52,6 +58,7 @@ def shuffle(images, dims):
 
 def reassemble(pieces, dims):
     """Reassembles ordered piece images into a full image"""
+    assert dims[0]*dims[1]==len(pieces)
     pieces=np.array(pieces)
     if not(len(pieces.shape)==4): raise TypeError("pieces must be a 4-dimensional ndarray-like object")
     if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple")
