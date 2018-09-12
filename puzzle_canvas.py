@@ -4,6 +4,7 @@ import numpy as np
 from math import floor
 from PIL import ImageTk, Image
 from utils import resize
+import cv2
 
 class PuzzleCanvas(Canvas):
 
@@ -26,7 +27,7 @@ class PuzzleCanvas(Canvas):
         if params["clear"]==True:
             self.delete(self.find_all())
 
-        center=(self.size[1], self.size[0])
+        center=(self.size[0]//2, self.size[1]//2)
         dims=collection.dims
 
         self.resize_collection(collection)
@@ -35,19 +36,23 @@ class PuzzleCanvas(Canvas):
         centers = self.find_plot_locations(dims, size, center)
         self.locations=np.reshape(centers, (dims[0], dims[1], 2))
 
-        tkimages=[ImageTk.PhotoImage(Image.fromarray(image)) for image in images]
+        self.tkimages=[self.array_to_image(array) for array in images]
 
         collection.mass_set("location", list(centers))
-        collection.mass_set("tkimage", tkimages)
 
         ids=[]
 
         #plot the pieces
-        for piece, piece_center in zip(collection.get(), centers):
-            ids.append(self.create_image(piece_center[0], piece_center[1], image=piece.tkimage))
+        for piece, piece_center, tkimage in zip(collection.get(), centers, self.tkimages):
+            #cv2.imshow("", piece.array)
+            #cv2.waitKey()
+            ids.append(self.create_image(piece_center[0], piece_center[1], image=tkimage))
 
         collection.mass_set("id", ids)
 
+
+    def array_to_image(self, array):
+        return ImageTk.PhotoImage(Image.fromarray(array))
 
 
     def find_plot_locations(self, dims, piece_shape, center=(400,300), reference="center"):
