@@ -39,21 +39,19 @@ def _raw_shuffle(image, dims):
     return sample(img_split(image, dims), dims[0]*dims[1])
 
 
-
-def shuffle(pieces, dims):
+def shuffle(images, dims, prev_dims):
     """Shuffle the image into equal rectangular pieces"""
-    images=np.array(pieces.get())
+    images=np.array(images)
     if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple.")
     if len(images.shape)==4:
         if images.shape[0]==1:
             return _raw_shuffle(images[0], dims)
         else:
-            return _raw_shuffle(reassemble(images, pieces.dims), dims)
+            return _raw_shuffle(reassemble(images, prev_dims), dims)
     elif len(images.shape)==3:
         return _raw_shuffle(images, dims)
     else:
         raise TypeError("Array is not legible as image.")
-    return
 
 
 def reassemble(pieces, dims):

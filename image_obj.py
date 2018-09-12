@@ -1,6 +1,7 @@
 from numba import cuda
 import numpy as np
-from img_recog_proto import img_split
+from img_recog_proto import img_split, shuffle
+import cv2
 
 
 class Solution(object):
@@ -29,6 +30,7 @@ class Piece(object):
         self.location=location
         self.plotted=None
         self.tkimage=None
+        self.slot=None
 
     def __get__():
         return self.array
@@ -46,9 +48,13 @@ class PieceCollection:
             raise Exception("Invalid image object")
         self._pieces=[Piece(image) for image in images]
         self.dims=dims
+        self.ph_dict={}
 
-    def get(self):
-        return self._pieces
+    def get(self, location=None):
+        if location == None:
+            return self._pieces
+        else:
+            assert self.loc_dict
 
     def add(self, image):
         self._pieces.insert(0, image)
@@ -63,10 +69,14 @@ class PieceCollection:
                 piece.plotted=value
         elif attr=="location":
             for value, piece in zip(values, self._pieces):
-                piece.location=value
+                piece.location = value
         elif attr=="tkimage":
             for value, piece in zip(values, self._pieces):
                 piece.tkimage=value
+        elif attr=="slot":
+            for value, piece in zip(values, self._pieces):
+                piece.slot=value
+                self.ph_dict[value]=piece
 
     def mass_get(self, attr):
         if attr=="id":
@@ -79,3 +89,11 @@ class PieceCollection:
             return([piece.tkimage for piece in self._pieces])
         elif attr=="image":
             return([piece.array for piece in self._pieces])
+        elif attr=="slot":
+            return([piece.slot for piece in self._pieces])
+
+    @staticmethod
+    def shuffle_collection(collection, dims):
+        images=np.array(collection.mass_get("image"))
+        images=shuffle(images, dims, collection.dims)
+        return PieceCollection(images, dims)

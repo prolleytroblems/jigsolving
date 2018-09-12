@@ -191,8 +191,8 @@ class GUI(Tk):
         def open_image(path):
             image=functions["open"](path)
 
-            pieces=PieceCollection(image, (1,1))
-            self.canvas.plot_pieces(pieces, dims=(1,1))
+            collection=PieceCollection(image, (1,1))
+            self.canvas.plot_pieces(collection, dims=(1,1))
             self.detailslabel.configure(text="Size: " + str(image.shape[0])+" x " +
                                             str(image.shape[1]) + " pixels \nName: " +
                                             re.split(r"\\", path)[-1] + "\nFormat: "+re.split(r"\.", path)[-1])
@@ -201,9 +201,9 @@ class GUI(Tk):
             self.distortbutton.configure(state="enabled")
 
         def shuffle_image(dims):
-            image=functions["shuffle"](self.canvas.pieces, dims=dims)
+            collection=functions["shuffle"](self.canvas.collection, dims=dims)
 
-            self.canvas.plot_image(image, dims)
+            self.canvas.plot_pieces(collection)
 
             self.distortbutton.configure(state="enabled")
             self.shufflebutton.configure(state="disabled")

@@ -13,8 +13,7 @@ class PuzzleCanvas(Canvas):
         self.configure( width=size[0], height=size[1] )
         self.usage=(floor(size[0]*usage), floor(size[1]*usage))
         self.size=size
-        self.locations=None
-        self.pieces=None
+        self.collection=None
 
 
     def plot_pieces(self, collection, **params):
@@ -27,35 +26,35 @@ class PuzzleCanvas(Canvas):
         if params["clear"]==True:
             self.delete(self.find_all())
 
-        center=(self.size[0]//2, self.size[1]//2)
-        dims=collection.dims
-
         self.resize_collection(collection)
-        images=collection.mass_get("plotted")
-        size=images[0].shape[0], images[0].shape[1]
-        centers = self.find_plot_locations(dims, size, center)
-        self.locations=np.reshape(centers, (dims[0], dims[1], 2))
-
-        self.tkimages=[self.array_to_image(array) for array in images]
-
-        collection.mass_set("location", list(centers))
+        centers = self.find_plot_locations(collection, (self.size[0]//2, self.size[1]//2))
+        tkimages=[self.array_to_image(array) for array in collection.mass_get("plotted")]
 
         ids=[]
 
         #plot the pieces
-        for piece, piece_center, tkimage in zip(collection.get(), centers, self.tkimages):
-            #cv2.imshow("", piece.array)
-            #cv2.waitKey()
+        for piece, piece_center, tkimage in zip(collection.get(), centers, tkimages):
             ids.append(self.create_image(piece_center[0], piece_center[1], image=tkimage))
 
+        slots=[(a,b) for a in range(collection.dims[0]) for b in range(collection.dims[1])]
+
+        collection.mass_set("slot", slots)
+        collection.mass_set("location", list(centers))
+        collection.mass_set("tkimage", tkimages)
         collection.mass_set("id", ids)
+
+        self.collection=collection
 
 
     def array_to_image(self, array):
         return ImageTk.PhotoImage(Image.fromarray(array))
 
 
-    def find_plot_locations(self, dims, piece_shape, center=(400,300), reference="center"):
+    def find_plot_locations(self, collection, center=(400,300), reference="center"):
+        dims=collection.dims
+        image=collection.mass_get("plotted")[0]
+        piece_shape=(image.shape[0], image.shape[1])
+
         if reference=="center":
             full_size=np.array((piece_shape[1]*dims[1], piece_shape[0]*dims[0]))
             centers=np.array([(x*piece_shape[1], y*piece_shape[0]) for y in range(dims[0]) for x in range(dims[1])])

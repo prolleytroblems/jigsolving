@@ -2,6 +2,7 @@ from img_recog_numba import *
 from img_recog_proto import *
 from img_recog_proto import distort as protodistort
 from puzzle_gui import *
+from image_obj import *
 
 pool= 4
 dims=(3,3)
@@ -13,8 +14,8 @@ def open(path):
 def distort(pieces, delta, mode):
     return [protodistort(image, 10, mode) for image in pieces.get()]
 
-def split_shuffle(pieces, dims):
-    return shuffle(pieces, dims)
+def split_shuffle(collection, dims):
+    return PieceCollection.shuffle_collection(collection, dims)
 
 def solve(path, pieces, pooling=5, ids=None, **params):
     solved=full_solve(np.array(pieces.get()), Solution(path, pieces.dims), pooling=pooling, ids=ids, debug_mode=True, iterator=True)
