@@ -211,12 +211,12 @@ class GUI(Tk):
 
         def distort_image(delta, mode):
             modedict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g", "Shape":"s"}
-            image=functions["distort"](self.canvas.pieces, delta, modedict[mode])
-            self.canvas.plot_image(image, dims=self.canvas.pieces.dims)
+            collection=functions["distort"](self.canvas.collection, delta, modedict[mode])
+            self.canvas.plot_pieces(collection)
 
         def solve_puzzle(pooling=None):
 
-            images=functions["solve"](self.image_path, self.canvas.pieces,
+            ordered_ids = functions["solve"](self.image_path, self.canvas.pieces,
                                     pooling=pooling, ids=self.canvas.ids, iterator=True)
             images=iter(list(images))
 

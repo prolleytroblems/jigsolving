@@ -11,13 +11,19 @@ brightness_delta=30
 def open(path):
     return openimg(path)
 
-def distort(pieces, delta, mode):
-    return [protodistort(image, 10, mode) for image in pieces.get()]
-
 def split_shuffle(collection, dims):
-    return PieceCollection.shuffle_collection(collection, dims)
+    return collection.shuffle_collection(dims)
+
+def distort(collection, delta, mode):
+    return collection.distort_collection(delta, mode)
+
 
 def solve(path, pieces, pooling=5, ids=None, **params):
+
+    THE SOLVE FUNCTION SHOULD RETURN ID-SLOT PAIRS THAT ARE THEN SENT TO THE CANVAS OBJECT FOR A RELOCATION OR REPLOTTING
+    THE CANVAS OBJECT SHOULD FIND THE NEXT LOCATION FROM EACH PIECE FROM EITHER AN INTERNAL ARRAY (NOT FROM THE COLLECTION), AND MOVE
+    EACH PIECE TO ITS RESPECTIVE LOCATION, CORRECTING LOCATION AND SLOT VALUES
+
     solved=full_solve(np.array(pieces.get()), Solution(path, pieces.dims), pooling=pooling, ids=ids, debug_mode=True, iterator=True)
     return solved
 

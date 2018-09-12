@@ -1,7 +1,6 @@
 from numba import cuda
 import numpy as np
-from img_recog_proto import img_split, shuffle
-import cv2
+from img_recog_proto import img_split, shuffle, distort
 
 
 class Solution(object):
@@ -17,7 +16,7 @@ class Solution(object):
             except Exception as e:
                 raise TypeError("path_or_pieces must be a path, or 4D ndarray-like of piece pbjects")
         self.dpieces=cuda.to_device(np.ascontiguousarray(self.pieces))
-        self.locations=np.array([(i,j) for i in range(dims[0]) for j in range(dims[1])])
+        self.slots=np.array([(i,j) for i in range(dims[0]) for j in range(dims[1])])
         self.availability=[True]*dims[0]*dims[1]
         self.shape=dims
 
@@ -92,8 +91,12 @@ class PieceCollection:
         elif attr=="slot":
             return([piece.slot for piece in self._pieces])
 
-    @staticmethod
-    def shuffle_collection(collection, dims):
-        images=np.array(collection.mass_get("image"))
-        images=shuffle(images, dims, collection.dims)
+    def shuffle_collection(self, dims):
+        images=np.array(self.mass_get("image"))
+        images=shuffle(images, dims, self.dims)
         return PieceCollection(images, dims)
+
+    def distort_collection(self, delta, mode):
+        for piece in self._pieces:
+            piece.array = distort(piece.array, 10, mode)
+        return self
