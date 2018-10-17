@@ -69,6 +69,7 @@ class GUI(Tk):
         solveframe.columnconfigure(1, weight=2)
         solveframe.rowconfigure(0, weight=1)
         solveframe.rowconfigure(1, weight=1)
+        solveframe.rowconfigure(2, weight=1)
         solveframe.grid(column=0, row=3, sticky=(N, W, E, S), padx=2, pady=2)
 
         fillerframe=ttk.Frame(sideframe)
@@ -172,9 +173,19 @@ class GUI(Tk):
         poolspin.grid(column=1, row=0, pady=2, padx=5, sticky=(W))
         poolvar.set("5")
 
+        comparelabel=ttk.Label(solveframe)
+        comparelabel.configure(text="Method:")
+        comparelabel.grid(column=0, row=1, sticky=W, pady=2, padx=3)
+
+        self.comparevar=StringVar()
+        comparecombo=ttk.Combobox(solveframe, textvariable=self.comparevar, width=10)
+        comparecombo.configure(values=["xcorr", "square error"], state="readonly")
+        comparecombo.grid(column=1, row=1, pady=2, padx=5, sticky=(W))
+        self.comparevar.set("xcorr")
+
         self.solvebutton=ttk.Button(solveframe, text="Solve", width=20)
-        self.solvebutton.configure(command=lambda: functions["solve"](pooling=int(poolvar.get())))
-        self.solvebutton.grid(column=0, row=1, columnspan=2, pady=2)
+        self.solvebutton.configure(command=lambda: functions["solve"](pooling=int(poolvar.get()), method=self.comparevar.get()))
+        self.solvebutton.grid(column=0, row=2, columnspan=2, pady=2)
 
         #--------------------------
 
@@ -281,9 +292,9 @@ class GUI(Tk):
             image=functions["distort"](self.images, delta, modedict[mode])
             self.plot_image(image, dims=self.dims)
 
-        def solve_puzzle(pooling=None):
+        def solve_puzzle(pooling=None, method="xcorr"):
             image=functions["solve"](self.image_path, self.images, dims=self.dims,
-                                    pooling=pooling)
+                                    pooling=pooling, method=method)
             self.plot_image(image)
 
             self.shufflebutton.configure(state="disabled")

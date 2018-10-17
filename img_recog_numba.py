@@ -102,6 +102,9 @@ def compare_xcorr(imga, imgb, dimga, dimgb, weights=np.array((1,1,1), dtype=np.f
 
 def locate_one_piece(dpiece, solution, **params):
     """Will only receive preprocessed device arrays!"""
+    raise Exception("Deprecated")
+
+
     if not("debug_mode" in params):
         params["debug_mode"]=False
     if not("threshold" in params):
@@ -199,7 +202,12 @@ def find_match(dto_match, dpieces, availability=None, **params):
         if True:
             piece=dpieces[i].copy_to_host()
 
-            resemblance=compare_xcorr(piece, solutionpiece, dpieces[i], dto_match, **params)
+            if params["method"]=="square error":
+                resemblance=compare(dpieces[i], dto_match, **params)
+            elif params["method"]=="xcorr":
+                resemblance=compare_xcorr(piece, solutionpiece, dpieces[i], dto_match, **params)
+            else:
+                raise Exception("Invalid method selection:", params["method"])
 
             if resemblance>max_resemblance[0]:
                 if params["debug_mode"]==True:
@@ -239,9 +247,6 @@ def resize_batch(pieces, size, **params):
 
 
 def locate_pieces(pieces, solution, pooling=None, **params):
-    if not("debug_mode" in params):
-        params["debug_mode"]=False
-
 
     p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
@@ -265,6 +270,8 @@ def full_solve(pieces, solution, pooling=None, **params):
         params["debug_mode"]=False
     if not("iterator" in params):
         params["iterator"]=True
+    if not("method" in params):
+        params["method"]="xcorr"
 
 
     if params["debug_mode"]==True:
