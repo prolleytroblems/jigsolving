@@ -15,6 +15,14 @@ class PuzzleCanvas(Canvas):
         self.size=size
         self.collection=None
 
+    def configure(self, **params):
+        super().configure(**params)
+        if "height" in params:
+            self.center[1]=params["height"]//2
+            self.height=params["height"]
+        if "width" in params:
+            self.center[0]=params["width"]//2
+            self.width=params["width"]
 
     def plot_pieces(self, collection, **params):
         "plots Piece objects from a PieceCollection based on their order (location values are ignored)"
