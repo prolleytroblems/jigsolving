@@ -18,6 +18,9 @@ class ParticleOptimizer:
         self.gbest=None
         self._uptodate=False
 
+    def get(self):
+        return random.choice(self.gbest)[1]
+
     def get_best(self):
         a=0
         if self._uptodate:
@@ -58,5 +61,16 @@ class ParticleOptimizer:
 
     def step(self):
         for particle in self.particles:
-            particle.step(self.gbest[0][1])
+            particle.step(random.choice(self.gbest)[1])
         self._uptodate=False
+
+from particlealg import ParticleOptimizer
+
+
+def PermutationOptimizer(ParticleOptimizer):
+
+    def decode(self):
+        values=self.get()
+        values=list(zip(values, range(len(values))))
+        values=values.sort(key=lambda x: x[0])
+        return list(map(lambda x: x[1], values))
