@@ -1,6 +1,7 @@
 from particle import Particle
 import numpy as np
 from copy import copy
+import random
 
 
 class ParticleOptimizer:
@@ -14,26 +15,25 @@ class ParticleOptimizer:
             value_ranges=np.asarray(value_ranges)
             pos = pos*(value_ranges[:,1]-value_ranges[:,0])+value_ranges[:,0]
         for i in range(n_particles):
-            self.particles.append(Particle(pos[i], spd[i], fitness, **kwargs))
+            self.particles.append(Particle(pos[i], spd[i], fitness,
+                                value_range=value_ranges[i], **kwargs))
         self.gbest=None
         self._uptodate=False
+        self.fitness=fitness
 
     def get(self):
         return random.choice(self.gbest)[1]
 
-    def get_best(self):
-        a=0
-        if self._uptodate:
-            best=self._gbest
-        else:
-            best=[self.particles[0].get()]
-            a=1
-        for i in range(a, len(self.particles)):
-            temp=self.particles[i].get()
-            if temp[0]>best[0][0]:
-                best=[temp]
-            elif temp[0]==best[0][0]:
-                best.append(temp)
+    def _get_best(self):
+        best=[self.particles[0].get()]
+        for i in range(1, len(self.particles)):
+            position=self.particles[i].get()
+            fitness=self.fitness(position)
+            best_fit=self.fitness(best[0])
+            if fitness>best_fit:
+                best=[position]
+            elif fitness==best_fit:
+                best.append(position)
         return best
 
     def gbestprop():
@@ -42,11 +42,9 @@ class ParticleOptimizer:
             if self._uptodate:
                 return self._gbest
             else:
-                best=self.get_best()
-                if not(self._gbest) or best[0][0]>self._gbest[0][0]:
-                    self._gbest=best
-                else:
-                    pass
+                current_best=self._get_best()
+                if not(self._gbest) or self.fitness(current_best[0])>self.fitness(self._gbest[0]):
+                    self._gbest=current_best
                 self._uptodate=True
                 return self._gbest
         def fset(self, value):
@@ -61,16 +59,51 @@ class ParticleOptimizer:
 
     def step(self):
         for particle in self.particles:
-            particle.step(random.choice(self.gbest)[1])
+            particle.step(random.choice(self.gbest))
         self._uptodate=False
 
-from particlealg import ParticleOptimizer
+
+class PermutationOptimizer(ParticleOptimizer):
+
+    def __init__(self, n_dims, n_particles, valuearray, **kwargs):
+        """Valuearray should be n_dims by n_dims, with the value at (x,y) representing
+            the value of element y if in position x."""
+        assert valuearray.shape==(n_dims, n_dims)
+        self.fitness=self.make_fitness()
+        self.particles=[]
+        pos = np.random.random((n_particles, n_dims))
+        spd = np.random.random((n_particles, n_dims))
+        for i in range(n_particles):
+            self.particles.append(Particle(pos[i], spd[i], self.fitness,
+                                    value_range=(0,0.9999), **kwargs))
+        self.gbest=None
+        self._uptodate=False
+        self.valuearray=valuearray
+        self.dim=n_dims
+
+    def ordereddecode(self, positions, **kwargs):
+        slots = list(range(self.dim))
+        permutation = []
+        for i in range(self.dim):
+            index = int(positions[i]*(self.dim-i))
+            permutation.append(slots.pop(index))
+        return permutation
+
+    def sortdecode(self, positions, **kwargs):
+        values=list(zip(positions, range(self.dim)))
+        values.sort(key=lambda x: x[0])
+        permutation=list(map(lambda x: x[1], values))
+        return permutation
+
+    def evaluate(self, permutation):
+        value=0
+        for i in range(len(permutation)):
+            value+=self.valuearray[i, permutation[i]]
+        return value
 
 
-def PermutationOptimizer(ParticleOptimizer):
-
-    def decode(self):
-        values=self.get()
-        values=list(zip(values, range(len(values))))
-        values=values.sort(key=lambda x: x[0])
-        return list(map(lambda x: x[1], values))
+    def make_fitness(self):
+        def fitnessfunc(positions):
+            permutation=self.sortdecode(positions)
+            return self.evaluate(permutation)
+        return fitnessfunc
