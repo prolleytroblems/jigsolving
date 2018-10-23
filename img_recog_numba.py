@@ -179,6 +179,18 @@ def preprocess_pieces(pieces, solution, pooling=None, **params):
     return (pieces, solution)
 
 
+def get_valuearray(dpieces, dsolution):
+    compare=compare(dpieces[i], dto_match, **params)
+    valuearray=np.zeros((len(dpieces), len(dpieces)))
+    for i, slot in enumerate(dsolution):
+        for j, piece in enumerate(dpieces):
+            valuearray[i, j] = compare(slot, piece)
+    return valuearray
+
+
+def particle_solve(pieces, solution)
+
+
 def find_match(dto_match, dpieces, availability=None, **params):
     """Will only receive preprocessed device arrays! \n
         Returns the index of best matching piece from array pieces."""
@@ -200,11 +212,11 @@ def find_match(dto_match, dpieces, availability=None, **params):
     for i in range(dpieces.shape[0]):
 
         if True:
-            piece=dpieces[i].copy_to_host()
 
             if params["method"]=="square error":
                 resemblance=compare(dpieces[i], dto_match, **params)
             elif params["method"]=="xcorr":
+                piece=dpieces[i].copy_to_host()
                 resemblance=compare_xcorr(piece, solutionpiece, dpieces[i], dto_match, **params)
             else:
                 raise Exception("Invalid method selection:", params["method"])
