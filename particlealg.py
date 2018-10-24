@@ -6,23 +6,23 @@ import random
 
 class ParticleOptimizer:
 
-    def __init__(self, n_dims, n_particles, fitness, value_ranges=None, **kwargs):
+    def __init__(self, n_dims, n_particles, fitness, mass=1, value_ranges=None, **kwargs):
 
         self.particles=[]
         pos = np.random.random((n_particles, n_dims))
-        spd = np.random.random((n_particles, n_dims))
+        spd = 2*np.random.random((n_particles, n_dims))-1
         if value_ranges:
             value_ranges=np.asarray(value_ranges)
             pos = pos*(value_ranges[:,1]-value_ranges[:,0])+value_ranges[:,0]
         for i in range(n_particles):
-            self.particles.append(Particle(pos[i], spd[i], fitness,
+            self.particles.append(Particle(pos[i], spd[i], fitness, mass=mass,
                                 value_range=value_ranges[i], **kwargs))
         self.gbest=None
         self._uptodate=False
         self.fitness=fitness
 
     def get(self):
-        return random.choice(self.gbest)[1]
+        return random.choice(self.gbest)
 
     def _get_best(self):
         best=[self.particles[0].get()]
@@ -62,13 +62,22 @@ class ParticleOptimizer:
             particle.step(random.choice(self.gbest))
         self._uptodate=False
 
+    def get_fitness(self):
+        return self.fitness(self.gbest[0])
+
 
 class PermutationOptimizer(ParticleOptimizer):
 
-    def __init__(self, n_dims, n_particles, valuearray, **kwargs):
+    def __init__(self, n_dims, n_particles, valuearray, decoding="ordered", **kwargs):
         """Valuearray should be n_dims by n_dims, with the value at (x,y) representing
             the value of element y if in position x."""
         assert valuearray.shape==(n_dims, n_dims)
+        if decoding=="ordered":
+            self.decode=self.ordereddecode
+        elif decoding=="sort":
+            self.decode=self.sortdecode
+        else:
+            raise Exception()
         self.fitness=self.make_fitness()
         self.particles=[]
         pos = np.random.random((n_particles, n_dims))
@@ -80,6 +89,9 @@ class PermutationOptimizer(ParticleOptimizer):
         self._uptodate=False
         self.valuearray=valuearray
         self.dim=n_dims
+
+    def get(self):
+        return self.decode(self.gbest[0])
 
     def ordereddecode(self, positions, **kwargs):
         slots = list(range(self.dim))
@@ -101,9 +113,8 @@ class PermutationOptimizer(ParticleOptimizer):
             value+=self.valuearray[i, permutation[i]]
         return value
 
-
     def make_fitness(self):
         def fitnessfunc(positions):
-            permutation=self.sortdecode(positions)
+            permutation=self.decode(positions)
             return self.evaluate(permutation)
         return fitnessfunc

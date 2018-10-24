@@ -5,7 +5,7 @@ from copy import copy
 
 class Particle:
 
-    def __init__(self, position, speed, fitness,
+    def __init__(self, position, speed, fitness, mass=1,
             lrate=(1,1), randsigma=(0.1,0.1), tinterval=0.1, value_range=None):
         """First value in coefficients is for gbest, second for pbest."""
         position=np.asarray(position)
@@ -14,6 +14,7 @@ class Particle:
         assert len(speed.shape)==1
         assert position.shape==speed.shape
 
+        self.mass=mass
         self.position=position
         self.speed=speed
         self.fitness=fitness
@@ -27,7 +28,7 @@ class Particle:
         return copy(self.position)
 
     def accelerate(self, acceleration):
-        self.speed+=acceleration
+        self.speed=self.speed*self.mass+acceleration*self.tinterval
 
     def movestep(self):
         self.position+=self.speed*self.tinterval
@@ -41,7 +42,8 @@ class Particle:
     def calcaccel(self, gbest):
         pbest=random.choice(self.pbest)
         bests=np.asarray((gbest, pbest))
-        randomness=np.random.normal(0, self.randsigma, (2))
+        #randomness=np.random.normal(0, self.randsigma, (2))
+        randomness=np.random.normal((2))*self.randsigma
         diffs=bests-np.asarray((self.position, self.position))
         accel=np.dot(np.transpose(diffs), self.lrate*randomness)
         return accel

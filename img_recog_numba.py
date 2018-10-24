@@ -2,6 +2,7 @@ from numba import cuda,jit
 from datetime import datetime
 import numpy as np
 import cv2
+from particlealg import PermutationOptimizer
 
 
 class Solution(object):
@@ -179,16 +180,41 @@ def preprocess_pieces(pieces, solution, pooling=None, **params):
     return (pieces, solution)
 
 
-def get_valuearray(dpieces, dsolution):
-    compare=compare(dpieces[i], dto_match, **params)
+def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
     valuearray=np.zeros((len(dpieces), len(dpieces)))
-    for i, slot in enumerate(dsolution):
-        for j, piece in enumerate(dpieces):
-            valuearray[i, j] = compare(slot, piece)
+    for i in range(len(dsolution)):
+        for j in range(len(dpieces)):
+            #valuearray[i, j] = compare(dsolution[i], dpieces[j], decoding="sort", **params)**2
+            valuearray[i, j] = compare_xcorr(solutionpieces[i], pieces[j], dsolution[i], dpieces[j], decoding="sort", **params)**2
+    print(valuearray)
     return valuearray
 
 
-def particle_solve(pieces, solution)
+def particle_solve(pieces, solution, pooling=None, **params):
+    p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
+    dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
+    dsolution = p_solution.dpieces
+    valuearray = get_valuearray(p_pieces, p_solution.pieces, dpieces, dsolution)
+    optimizer = PermutationOptimizer(len(pieces), len(pieces)*5, valuearray, mass=10, tinterval=0.1,  lrate=(0.01, 0.01), randsigma=(0.1,0.1), decoding="sort")
+    oldbest=None
+    i=0
+    while True:
+        best=optimizer.get_fitness()
+        print(i, best)
+        if not(oldbest):
+            oldbest=best
+        for _ in range(10):
+            optimizer.step()
+        if oldbest==best:
+            i+=1
+            if i>10:
+                break
+        else:
+            i=0
+        oldbest=best
+    permutation=optimizer.get()
+    solved=reassemble([pieces[index] for index in permutation], solution.shape)
+    return solved
 
 
 def find_match(dto_match, dpieces, availability=None, **params):
