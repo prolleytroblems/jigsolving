@@ -92,7 +92,8 @@ class PermutationOptimizer(ParticleOptimizer):
         self.gbest=None
         self._uptodate=False
 
-
+        NEED TO RETURN REBUIT ARRAYS SINCE SO MUCH STUFF IS EXCLUDED
+        
     def prelocate(self, valuearray):
         self.instant_matches(valuearray)
         cleared_array=valuearray[self.exclusion_mask]
