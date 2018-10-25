@@ -185,8 +185,8 @@ def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
     for i in range(len(dsolution)):
         for j in range(len(dpieces)):
             #valuearray[i, j] = compare(dsolution[i], dpieces[j], decoding="sort", **params)**2
-            valuearray[i, j] = compare_xcorr(solutionpieces[i], pieces[j], dsolution[i], dpieces[j], decoding="sort", **params)**2
-    print(valuearray)
+            valuearray[i, j] = compare_xcorr(solutionpieces[i], pieces[j], dsolution[i], dpieces[j], decoding="sort", **params)**3
+    np.savetxt("valuearray.csv", valuearray)
     return valuearray
 
 
@@ -195,7 +195,7 @@ def particle_solve(pieces, solution, pooling=None, **params):
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
     dsolution = p_solution.dpieces
     valuearray = get_valuearray(p_pieces, p_solution.pieces, dpieces, dsolution)
-    optimizer = PermutationOptimizer(len(pieces), len(pieces)*5, valuearray, mass=10, tinterval=0.1,  lrate=(0.01, 0.01), randsigma=(0.1,0.1), decoding="sort")
+    optimizer = PermutationOptimizer(len(pieces), len(pieces)*5, valuearray, mass=10, tinterval=0.1,  lrate=(0.01, 0.01), decoding="sort")
     oldbest=None
     i=0
     while True:

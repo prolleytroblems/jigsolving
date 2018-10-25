@@ -6,7 +6,7 @@ from copy import copy
 class Particle:
 
     def __init__(self, position, speed, fitness, mass=1,
-            lrate=(1,1), randsigma=(0.1,0.1), tinterval=0.1, value_range=None):
+            lrate=(1,1), randsigma=(1,1), tinterval=0.1, value_ranges=None):
         """First value in coefficients is for gbest, second for pbest."""
         position=np.asarray(position)
         speed=np.asarray(speed)
@@ -22,7 +22,8 @@ class Particle:
         self.lrate=np.asarray(lrate)
         self.randsigma=np.asarray(randsigma)
         self.tinterval=tinterval
-        self.value_range=value_range
+        self.bounce=0.7
+        self.value_ranges=value_ranges
 
     def get(self):
         return copy(self.position)
@@ -43,17 +44,19 @@ class Particle:
         pbest=random.choice(self.pbest)
         bests=np.asarray((gbest, pbest))
         #randomness=np.random.normal(0, self.randsigma, (2))
-        randomness=np.random.normal((2))*self.randsigma
+        randomness=np.random.random((2))*self.randsigma
         diffs=bests-np.asarray((self.position, self.position))
         accel=np.dot(np.transpose(diffs), self.lrate*randomness)
         return accel
 
     def check_range(self):
         for i in range(len(self.position)):
-            if self.position[i]<self.value_range[0]:
-                self.position[i]=self.value_range[0]
-            elif self.position[i]>self.value_range[1]:
-                self.position[i]=self.value_range[1]
+            if self.position[i]<self.value_ranges[i,0]:
+                self.position[i]=self.value_ranges[i,0]
+                self.speed[i]=-1*self.bounce*self.speed[i]
+            elif self.position[i]>self.value_ranges[i,1]:
+                self.position[i]=self.value_ranges[i,1]
+                self.speed[i]=-1*self.bounce*self.speed[i]
 
     def update_pbest(self):
         pbestfit=self.fitness(self.pbest[0])
@@ -68,7 +71,7 @@ class Particle:
         self.accelerate(self.calcaccel(gbest))
         self.movestep()
 
-        if self.value_range:
+        if self.value_ranges.any():
             self.check_range()
 
         score=self.update_pbest()

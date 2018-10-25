@@ -16,10 +16,11 @@ class ParticleOptimizer:
             pos = pos*(value_ranges[:,1]-value_ranges[:,0])+value_ranges[:,0]
         for i in range(n_particles):
             self.particles.append(Particle(pos[i], spd[i], fitness, mass=mass,
-                                value_range=value_ranges[i], **kwargs))
+                                value_ranges=value_ranges, **kwargs))
         self.gbest=None
         self._uptodate=False
         self.fitness=fitness
+
 
     def get(self):
         return random.choice(self.gbest)
@@ -68,41 +69,75 @@ class ParticleOptimizer:
 
 class PermutationOptimizer(ParticleOptimizer):
 
-    def __init__(self, n_dims, n_particles, valuearray, decoding="ordered", **kwargs):
+    def __init__(self, n_particles, valuearray, mass=1, decoding="ordered", **kwargs):
         """Valuearray should be n_dims by n_dims, with the value at (x,y) representing
             the value of element y if in position x."""
-        assert valuearray.shape==(n_dims, n_dims)
+        assert valuearray.shape[0]==valuearray.shape[1]
         if decoding=="ordered":
             self.decode=self.ordereddecode
         elif decoding=="sort":
             self.decode=self.sortdecode
         else:
             raise Exception()
+        self.valuearray=valuearray
+        self.cleared_array=self.prelocate(valuearray)
         self.fitness=self.make_fitness()
         self.particles=[]
+        n_dims=valuearray.shape[0]
         pos = np.random.random((n_particles, n_dims))
-        spd = np.random.random((n_particles, n_dims))
+        spd = (np.random.random((n_particles, n_dims))-0.5)
         for i in range(n_particles):
             self.particles.append(Particle(pos[i], spd[i], self.fitness,
-                                    value_range=(0,0.9999), **kwargs))
+                                    value_ranges=np.asarray([(0,0.9999)]*n_dims), mass=mass, **kwargs))
         self.gbest=None
         self._uptodate=False
-        self.valuearray=valuearray
-        self.dim=n_dims
 
-    def get(self):
+
+    def prelocate(self, valuearray):
+        self.instant_matches(valuearray)
+        cleared_array=valuearray[self.exclusion_mask]
+        cleared_array=valuearray[:, self.exclusion_mask]
+        return cleared_array
+
+    def instant_matches(self, valuearray):
+        rowmax = np.argmax(valuearray, axis=1)
+        columnmax = np.argmax(valuearray, axis=0)
+        matches=[]
+        for dim in range(valuearray.shape[0]):
+            if columnmax[rowmax[dim]]==dim:
+                matches.append(dim)
+        self.exclusion_mask=np.ones((n_dims), dtype="boolean")
+        self.exclution_mask[matches]=False
+
+    def reinclude(array, excluded):
+        reconstructed=[]
+        arrayi=0
+        excludedi=0
+        for i in range(n_dims):
+            if i in self.
+
+    def get_best(self):
         return self.decode(self.gbest[0])
 
+    def get_positions(self):
+        return
+
+    def get_all(self):
+        positions=[]
+        for particle in self.particles:
+            positions.append(self.decode(particle.get()))
+        return positions
+
     def ordereddecode(self, positions, **kwargs):
-        slots = list(range(self.dim))
+        slots = list(range(len(self.valuearray)))
         permutation = []
-        for i in range(self.dim):
-            index = int(positions[i]*(self.dim-i))
+        for i in range(len(self.valuearray)):
+            index = int(positions[i]*(len(self.valuearray)-i))
             permutation.append(slots.pop(index))
         return permutation
 
     def sortdecode(self, positions, **kwargs):
-        values=list(zip(positions, range(self.dim)))
+        values=list(zip(positions, range(len(self.valuearray))))
         values.sort(key=lambda x: x[0])
         permutation=list(map(lambda x: x[1], values))
         return permutation
