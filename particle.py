@@ -6,7 +6,7 @@ from copy import copy
 class Particle:
 
     def __init__(self, position, speed, fitness, mass=1,
-            lrate=(1,1), randsigma=(1,1), tinterval=0.1, value_ranges=None):
+            lrate=(1,1), randsigma=(1,1), tinterval=1, value_ranges=None):
         """First value in coefficients is for gbest, second for pbest."""
         position=np.asarray(position)
         speed=np.asarray(speed)
@@ -67,7 +67,7 @@ class Particle:
             self.pbest.append(self.position)
         return score
 
-    def step(self, gbest):
+    def step(self, gbest, gbest_fit):
         self.accelerate(self.calcaccel(gbest))
         self.movestep()
 
@@ -76,9 +76,9 @@ class Particle:
 
         score=self.update_pbest()
 
-        if score>gbest[1]:
+        if score>gbest_fit:
             return 1
-        elif score==gbest[1]:
+        elif score==gbest_fit:
             return 2
         else:
             return 0
