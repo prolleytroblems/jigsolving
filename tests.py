@@ -16,8 +16,8 @@ def split_shuffle(images, dims):
     return shuffle(images, dims)
 
 def solve(path, pieces, dims, pooling=5, method="xcorr"):
-    end=particle_solve(np.array(pieces), Solution(path, dims), pooling)
-    #end=full_solve(np.array(pieces), Solution(path, dims), pooling, method=method, debug_mode=True)
+    #end=particle_solve(np.array(pieces), Solution(path, dims), pooling)
+    end=full_solve(np.array(pieces), Solution(path, dims), pooling, method=method, debug_mode=True)
     return end
 
 functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
