@@ -1,29 +1,58 @@
+"""A Particle Swarm Optimization library. /n
+Lucas Nakano 30/10/2018 /n
+Version 1.0 - First fully working version."""
+
 from particle import Particle
 import numpy as np
 from copy import copy
 import random
 
+##TO IMPROVE: IMPLEMENT WRAPAROUND,
+
 
 class ParticleOptimizer:
+    """Base optimizer class./n
+    Arguments:/n
+    n_dims          number of optimizeable paramenters/n
+    n_particles     number of particles/n
+    fitness         the fitness function/n
+    value_ranges    (optional) array of shape (n_dims, 2) with the range of each parameter/n
+    for other arguments, check documentation for Particle class"""
 
-    def __init__(self, n_dims, n_particles, fitness, mass=1, value_ranges=None, **kwargs):
-
-        self.particles=[]
-        pos = np.random.random((n_particles, n_dims))
-        spd = 2*np.random.random((n_particles, n_dims))-1
-        if value_ranges:
-            value_ranges=np.asarray(value_ranges)
-            pos = pos*(value_ranges[:,1]-value_ranges[:,0])+value_ranges[:,0]
-        for i in range(n_particles):
-            self.particles.append(Particle(pos[i], spd[i], fitness, mass=mass,
-                                value_ranges=value_ranges, **kwargs))
+    def __init__(self, n_dims, n_particles, fitness, **kwargs):
+        self.speedscale=1
+        self.fitness=fitness
+        self.make_particles(n_dims, n_particles, **kwargs)
         self.gbest=None
         self._uptodate=False
-        self.fitness=fitness
 
+    def make_particles(self, n_dims, n_particles, **kwargs):
+        self.particles=[]
+        pos = np.random.random((n_particles, n_dims))
+        spd = self.speedscale*(np.random.random((n_particles, n_dims))-0.5)
+        if "value_ranges" in kwargs:
+            assert kwargs["value_ranges"].shape==(n_dims, 2)
+            kwargs["value_ranges"]=np.asarray(kwargs["value_ranges"])
+            pos = pos*(kwargs["value_ranges"][:,1]-kwargs["value_ranges"][:,0])+kwargs["value_ranges"][:,0]
+        else:
+            kwargs["value_ranges"]=None
+        for i in range(n_particles):
+            self.particles.append(Particle(pos[i], spd[i], self.fitness, **kwargs))
 
     def get(self):
         return random.choice(self.gbest)
+
+    def get_all(self):
+        positions=[]
+        for particle in self.particles:
+            positions.append(particle.get())
+        return positions
+
+    def get_speeds(self):
+        speeds=[]
+        for particle in self.particles:
+            speeds.append(particle.speed)
+        return speeds
 
     def _get_best(self):
         best=[self.particles[0].get()]
@@ -67,10 +96,15 @@ class ParticleOptimizer:
     def get_fitness(self):
         return self.fitness(self.gbest[0])
 
+    def scatter(self):
+        for particle in self.particles:
+            particle.scatter()
+
 
 class PermutationOptimizer(ParticleOptimizer):
 
-    def __init__(self, n_particles, valuearray, mass=1.15, decoding="sort", **kwargs):
+    def __init__(self, n_particles, valuearray, mass=1.1, decoding="sort",
+                lrate=(1,1), **kwargs):
         """Valuearray should be n_dims by n_dims, with the value at (x,y) representing
             the value of element y if in position x."""
         assert valuearray.shape[0]==valuearray.shape[1]
@@ -83,23 +117,40 @@ class PermutationOptimizer(ParticleOptimizer):
 
         self.valuearray=valuearray
         self.fitness=self.make_fitness()
-        self.particles=[]
+        self.speedscale=0.5
+
         n_dims=self.valuearray.shape[0]
-        pos = np.random.random((n_particles, n_dims))
-        spd = (np.random.random((n_particles, n_dims))-0.5)
-        for i in range(n_particles):
-            self.particles.append(Particle(pos[i], spd[i], self.fitness,
-                                    value_ranges=np.asarray([(0,0.9999)]*n_dims), mass=mass, **kwargs))
+        kwargs["mass"]=mass
+        kwargs["value_ranges"]=np.asarray([(0, 0.9999)]*n_dims)
+        kwargs["lrate"]=lrate
+
+        if not("n_particles" in kwargs):
+            kwargs["n_particles"]=n_dims*3
+        if not ("smoothing" in kwargs):
+            kwargs["smoothing"]=(3, 0.1)
+
+        self.make_particles(n_dims, **kwargs)
+        self.smooth(*kwargs["smoothing"])
+
         self.gbest=None
         self._uptodate=False
 
     def get(self):
         return self.decode(self.gbest[0])
 
+    def get_raw(self):
+        return self.gbest[0]
+
     def get_all(self):
         positions=[]
         for particle in self.particles:
             positions.append(self.decode(particle.get()))
+        return positions
+
+    def get_all_raw(self):
+        positions=[]
+        for particle in self.particles:
+            positions.append((particle.get()))
         return positions
 
     def ordereddecode(self, positions, **kwargs):
@@ -128,10 +179,38 @@ class PermutationOptimizer(ParticleOptimizer):
             return self.evaluate(permutation)
         return fitnessfunc
 
+    def _smooth(self, iterations=1, c=0.1):
+        n_dims=self.valuearray.shape[0]
+        for i in range(iterations):
+            newarray=np.zeros((n_dims, n_dims))
+            for row in range(n_dims):
+                for column in range(n_dims):
+                    toadd=0
+                    if row>0:
+                        toadd+=self.valuearray[row-1, column]*c
+                    if row<n_dims-1:
+                        toadd+=self.valuearray[row+1, column]*c
+                    newarray[row, column] = self.valuearray[row, column] + toadd
+            self.valuearray = newarray
+
+    def smooth(self, iterations=1, c=0.2):
+        n_dims=self.valuearray.shape[0]
+        newarray=np.zeros((n_dims, n_dims))
+        for row in range(n_dims):
+            for column in range(n_dims):
+                newvalue=0
+                for offset in range(-iterations-1, iterations):
+                    currow=row+offset
+                    if currow>=0 and currow<n_dims:
+                        newvalue+=self.valuearray[currow, column]**2*c**abs(offset)
+                newarray[row, column] = newvalue
+        self.valuearray = newarray
+
 
 class PermutationOptimizerEX(PermutationOptimizer):
 
-        def __init__(self, n_particles, valuearray, mass=1.15, decoding="sort", **kwargs):
+        def __init__(self, n_particles, valuearray, mass=1.1, decoding="sort",
+                    lrate=(1,1), **kwargs):
             """Valuearray should be n_dims by n_dims, with the value at (x,y) representing
                 the value of element y if in position x."""
             assert valuearray.shape[0]==valuearray.shape[1]
@@ -142,20 +221,12 @@ class PermutationOptimizerEX(PermutationOptimizer):
             else:
                 raise Exception()
 
+
             self.true_valuearray=valuearray
             cleared_array=self.prelocate(valuearray)
             self.valuearray=cleared_array
 
-            self.fitness=self.make_fitness()
-            self.particles=[]
-            n_dims=self.valuearray.shape[0]
-            pos = np.random.random((n_particles, n_dims))
-            spd = (np.random.random((n_particles, n_dims))-0.5)
-            for i in range(n_particles):
-                self.particles.append(Particle(pos[i], spd[i], self.fitness,
-                                        value_ranges=np.asarray([(0,0.9999)]*n_dims), mass=mass, **kwargs))
-            self.gbest=None
-            self._uptodate=False
+            super().__init__(n_particles, valuearray, mass, decoding, lrate, **kwargs)
 
         def prelocate(self, valuearray):
             self.instant_matches(valuearray)

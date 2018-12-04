@@ -195,7 +195,7 @@ def particle_solve(pieces, solution, pooling=None, **params):
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
     dsolution = p_solution.dpieces
     valuearray = get_valuearray(p_pieces, p_solution.pieces, dpieces, dsolution)
-    optimizer = PermutationOptimizer(len(pieces), len(pieces)*5, valuearray, mass=10, tinterval=0.1,  lrate=(0.01, 0.01), decoding="sort")
+    optimizer = PermutationOptimizer(len(pieces)*5, valuearray, mass=1.15, lrate=(1, 1), decoding="sort")
     oldbest=None
     i=0
     while True:
@@ -203,11 +203,11 @@ def particle_solve(pieces, solution, pooling=None, **params):
         print(i, best)
         if not(oldbest):
             oldbest=best
-        for _ in range(10):
+        for _ in range(20):
             optimizer.step()
         if oldbest==best:
             i+=1
-            if i>10:
+            if i>30:
                 break
         else:
             i=0
