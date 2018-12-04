@@ -16,7 +16,7 @@ class Solution(object):
             except Exception as e:
                 raise TypeError("path_or_pieces must be a path, or 4D ndarray-like of piece pbjects")
         self.dpieces=cuda.to_device(np.ascontiguousarray(self.pieces))
-        self.slots=np.array([(i,j) for i in range(dims[0]) for j in range(dims[1])])
+        self.slots=[(i,j) for i in range(dims[0]) for j in range(dims[1])]
         self.availability=[True]*dims[0]*dims[1]
         self.shape=dims
 
@@ -37,32 +37,41 @@ class Piece(object):
 
 class PieceCollection:
 
-    def __init__(self, images, dims):
-        if len(np.array(images).shape)==4:
-            assert dims[0]*dims[1]==len(images)
-        elif len(np.array(images).shape)==3:
-            assert dims[0]*dims[1]==1
-            images=[images]
-        else:
-            raise Exception("Invalid image object")
-        self._pieces=[Piece(image) for image in images]
-        self.dims=dims
-        self.ph_dict={}
+    def __init__(self, pieces_or_images, dims):
+        if isinstance(pieces_or_images[0], np.ndarray):
+            images=pieces_or_images
+            if len(np.array(images).shape)==4:
+                assert dims[0]*dims[1]==len(images)
+            elif len(np.array(images).shape)==3:
+                assert dims[0]*dims[1]==1
+                images=[images]
+            else:
+                raise Exception("Invalid image object")
+            self._pieces=[Piece(image) for image in images]
+            self.dims=dims
+        elif isinstance(pieces_or_images[0], Piece):
+            self._pieces=pieces_or_images
+            self.dims=dims
+        self.slot_dict={}
+        self.id_dict={}
 
-    def get(self, location=None):
-        if location == None:
-            return self._pieces
+    def get(self, slot=None, id=None):
+        if slot:
+            return self.slot_dict[slot]
+        elif id:
+            return self.id_dict[id]
         else:
-            assert self.loc_dict
+            return self._pieces
 
     def add(self, image):
-        self._pieces.insert(0, image)
+        self._pieces.insert(0, Piece(image))
 
     def mass_set(self, attr, values):
         assert len(values)==len(self._pieces)
         if attr=="id":
             for value, piece in zip(values, self._pieces):
                 piece.id=value
+                self.id_dict[value]=piece
         elif attr=="plotted":
             for value, piece in zip(values, self._pieces):
                 piece.plotted=value
@@ -75,7 +84,7 @@ class PieceCollection:
         elif attr=="slot":
             for value, piece in zip(values, self._pieces):
                 piece.slot=value
-                self.ph_dict[value]=piece
+                self.slot_dict[value]=piece
 
     def mass_get(self, attr):
         if attr=="id":
@@ -98,5 +107,8 @@ class PieceCollection:
 
     def distort_collection(self, delta, mode):
         for piece in self._pieces:
-            piece.array = distort(piece.array, 10, mode)
+            piece.array = distort(piece.array, delta, mode)
         return self
+
+    def __len__(self):
+        return len(self._pieces)

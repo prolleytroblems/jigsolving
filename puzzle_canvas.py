@@ -37,7 +37,16 @@ class PuzzleCanvas(Canvas):
             self.delete(self.find_all())
 
         self.resize_collection(collection)
-        centers = self.find_plot_locations(collection, (self.size[0]//2, self.size[1]//2))
+
+        locations=collection.mass_get("location")
+        if locations[0] is None:
+            centers = self.find_plot_locations(collection, (self.size[0]//2, self.size[1]//2))
+            collection.mass_set("location", list(centers))
+            slots=[(a,b) for a in range(collection.dims[0]) for b in range(collection.dims[1])]
+            collection.mass_set("slot", slots)
+        else:
+            centers=locations
+
         tkimages=[self.array_to_image(array) for array in collection.mass_get("plotted")]
 
         ids=[]
@@ -46,14 +55,16 @@ class PuzzleCanvas(Canvas):
         for piece, piece_center, tkimage in zip(collection.get(), centers, tkimages):
             ids.append(self.create_image(piece_center[0], piece_center[1], image=tkimage))
 
-        slots=[(a,b) for a in range(collection.dims[0]) for b in range(collection.dims[1])]
 
-        collection.mass_set("slot", slots)
-        collection.mass_set("location", list(centers))
+
         collection.mass_set("tkimage", tkimages)
         collection.mass_set("id", ids)
 
         self.collection=collection
+
+
+    def replot(self):
+        self.plot_pieces(self.collection)
 
 
     def array_to_image(self, array):

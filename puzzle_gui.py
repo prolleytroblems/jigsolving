@@ -221,9 +221,9 @@ class GUI(Tk):
             self.solvebutton.configure(state="enabled")
 
         def distort_image(delta, mode):
-            modedict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g", "Shape":"s"}
-            collection=functions["distort"](self.canvas.collection, delta, modedict[mode])
-            self.canvas.plot_pieces(collection)
+            mode_dict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g", "Shape":"s"}
+            self.canvas.collection.distort_collection(delta, mode_dict[mode])
+            self.canvas.replot()
 
         def solve_puzzle(pooling=None, method="xcorr"):
 

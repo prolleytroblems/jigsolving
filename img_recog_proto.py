@@ -67,7 +67,7 @@ def reassemble(pieces, dims):
 def distort(image, delta, distortion):
     if not(len(np.array(image.shape))==3): raise TypeError("Array is not legible as image")
     if distortion=="n":
-        return b_distort(image, delta)
+        return b_distort(image, np.float32(delta))
     if distortion=="s":
         return s_distort(image, delta)
     else:
