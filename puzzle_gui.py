@@ -68,6 +68,7 @@ class GUI(Tk):
         solveframe.columnconfigure(1, weight=2)
         solveframe.rowconfigure(0, weight=1)
         solveframe.rowconfigure(1, weight=1)
+        solveframe.rowconfigure(2, weight=1)
         solveframe.grid(column=0, row=3, sticky=(N, W, E, S), padx=2, pady=2)
 
         fillerframe=ttk.Frame(sideframe)
@@ -94,7 +95,7 @@ class GUI(Tk):
 
         self.pathentry=ttk.Entry(openframe)
         self.pathentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
-        self.pathentry.insert(0,"images\puzzle.jpg")
+        self.pathentry.insert(0,"images/bridge.jpg")
 
         self.openbutton=ttk.Button(openframe, text="Open", width=20)
         self.openbutton.configure(command=lambda: functions["open"](self.pathentry.get()))
@@ -171,9 +172,19 @@ class GUI(Tk):
         poolspin.grid(column=1, row=0, pady=2, padx=5, sticky=(W))
         poolvar.set("5")
 
+        comparelabel=ttk.Label(solveframe)
+        comparelabel.configure(text="Method:")
+        comparelabel.grid(column=0, row=1, sticky=W, pady=2, padx=3)
+
+        self.comparevar=StringVar()
+        comparecombo=ttk.Combobox(solveframe, textvariable=self.comparevar, width=10)
+        comparecombo.configure(values=["xcorr", "square error"], state="readonly")
+        comparecombo.grid(column=1, row=1, pady=2, padx=5, sticky=(W))
+        self.comparevar.set("xcorr")
+
         self.solvebutton=ttk.Button(solveframe, text="Solve", width=20)
-        self.solvebutton.configure(command=lambda: functions["solve"](pooling=int(poolvar.get())))
-        self.solvebutton.grid(column=0, row=1, columnspan=2, pady=2)
+        self.solvebutton.configure(command=lambda: functions["solve"](pooling=int(poolvar.get()), method=self.comparevar.get()))
+        self.solvebutton.grid(column=0, row=2, columnspan=2, pady=2)
 
         #--------------------------
 
@@ -214,17 +225,16 @@ class GUI(Tk):
             collection=functions["distort"](self.canvas.collection, delta, modedict[mode])
             self.canvas.plot_pieces(collection)
 
-        def solve_puzzle(pooling=None):
+        def solve_puzzle(pooling=None, method="xcorr"):
 
-            ordered_ids = functions["solve"](self.image_path, self.canvas.pieces,
-                                    pooling=pooling, ids=self.canvas.ids, iterator=True)
-            images=iter(list(images))
+            id_slots = functions["solve"](self.image_path, self.canvas.collection,
+                                    pooling=pooling, iterator_mode=False, method=method)
 
             self.shufflebutton.configure(state="disabled")
             self.solvebutton.configure(state="disabled")
             self.shufflebutton.configure(state="enabled")
 
-            self.canvas.move_pieces(images, datetime.now())
+            self.canvas.update(id_slots)
 
         new_functions={"open": open_image, "shuffle": shuffle_image, "distort": distort_image, "solve": solve_puzzle}
 

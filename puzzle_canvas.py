@@ -15,8 +15,10 @@ class PuzzleCanvas(Canvas):
         self.size=size
         self.collection=None
 
+
     def configure(self, **params):
         super().configure(**params)
+        self.center=[None,None]
         if "height" in params:
             self.center[1]=params["height"]//2
             self.height=params["height"]
@@ -84,7 +86,6 @@ class PuzzleCanvas(Canvas):
 
     def _diff_move(self, id, x0, y0, dx, dy, step, dt, end):
         rx, ry = self.coords(id)
-
         px, py = ( round(x0 + dx - rx), round(y0 + dy - ry) )
 
         if step<end:
@@ -95,11 +96,10 @@ class PuzzleCanvas(Canvas):
             pass
 
 
-    def move_image(self, id, delx, dely, time=None, r_rate=10):
+    def _move_piece(self, id, delx, dely, time=None, r_rate=10):
         if time==None:
-            self.move(id, dx, dy)
+            self.move(id, delx, dely)
             return
-
         elif isinstance(time, int):
             dx, dy = ( delx / time * r_rate, dely / time * r_rate )
             x0, y0 = self.coords(id)
@@ -108,15 +108,23 @@ class PuzzleCanvas(Canvas):
             raise TypeError("time must be a positive integer")
 
 
-    def move_piece(self, id, target_location):
-        target_coords = self.locations[target_location[0], target_location[1]]
+    def _move_piece_to_target(self, id, target_coords):
         current_coords = self.coords( id )
         delx, dely = ( target_coords[0] - current_coords[0], target_coords[1] - current_coords[1] )
-        self.move_image( id, delx, dely, time=500)
+        self._move_piece( id, delx, dely, time=500)
+        self.collection.get(id=id).location=target_coords
 
+
+    def update(self, id_slots):
+        slots=[pair[1] for pair in id_slots]
+        locations=[self.collection.get(slot=slot).location for slot in slots]
+        for i in range(len(id_slots)):
+            self._move_piece_to_target(id_slots[i][0], locations[i])
+
+        self.collection.mass_set("slot", slots)
 
     def move_pieces(self, iterator, start):
-
+        raise NotImplementedError()
         self.pieces=PieceCollection([], self.pieces.dims)
         try:
             image=next(iterator)

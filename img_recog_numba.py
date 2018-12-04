@@ -6,7 +6,7 @@ from image_obj import *
 from utils import *
 
 
-DEFAULTS={"debug_mode":False, "threshold":None, "iterator":False}
+DEFAULTS={"debug_mode":False, "threshold":None, "iterator_mode":False, "method":"xcorr", "id_only":True}
 
 @cuda.jit(device=True)
 def compare_pixel(pixela, pixelb):
@@ -25,6 +25,21 @@ def gcompare(imga, imgb, C):
     C[y,x]=compare_pixel(imga[y,x], imgb[y,x])
 
 
+@cuda.jit(device=True)
+def compare_xcorr_color(colora, colorb, means):
+    c=(colora-means[0])*(colorb-means[1])
+    return c
+
+
+@cuda.jit
+def gcompare_xcorr(imga, imgb, means, C, weights):
+    y, x = cuda.grid(2)
+    if y>=imga.shape[0] or x>=imga.shape[1]:
+        return
+    for i in range(3):
+        C[y,x,i]=compare_xcorr_color(imga[y,x,i], imgb[y,x,i], means[:,i]) * weights[i]
+
+
 def compare(dimga, dimgb, **params):
     tpb = 16
     bpgy = (dimga.shape[0]-1)//tpb+1
@@ -32,23 +47,61 @@ def compare(dimga, dimgb, **params):
 
     C=np.array(np.zeros(dimga.shape[0:2]), dtype=np.float32)
 
-    gcompare[(bpgy, bpgx), (tpb, tpb)](np.ascontiguousarray(dimga), np.ascontiguousarray(dimgb), C)
+    gcompare[(bpgy, bpgx), (tpb, tpb)](dimga, dimgb, C)
 
     return 1-np.sum(C)/(dimga.shape[0]*dimga.shape[1]*442)
+
+
+def statistics(array):
+    means=[]
+    stds=[]
+    for i in range(3):
+        means.append(array[:,:,i].mean())
+        stds.append(array[:,:,i].std())
+    return (means, stds)
+
+
+def compare_xcorr(imga, imgb, dimga, dimgb, weights=np.array((1,1,1), dtype=np.float32), **params):
+
+    means_a, stds_a = statistics(imga)
+    means_b, stds_b = statistics(imgb)
+    N=imga.shape[0]*imga.shape[1]
+    means=np.array((means_a, means_b))
+
+    tpb = 16
+    bpgy = (dimga.shape[0]-1)//tpb+1
+    bpgx = (dimga.shape[1]-1)//tpb+1
+
+    C=np.array(np.zeros(dimga.shape), dtype=np.float32)
+    gcompare_xcorr[(bpgy, bpgx), (tpb, tpb)](dimga, dimgb, means, C, weights)
+
+    xcorr=[]
+    for i in range(3):
+        div=( (N-1) * stds_a[i] * stds_b[i])
+        if div!=0:
+            xcorr.append(np.sum( C[:,:,i]) / div)
+        else:
+            xcorr.append(np.sum( C[:,:,i]) / ( div + 0.00001 ))
+
+    return sum(xcorr)/3
 
 
 def locate_one_piece(dpiece, solution, **params):
     """Will only receive preprocessed device arrays!"""
     params=param_check(params, DEFAULTS)
-
+    raise Exception("Deprecated")
     if params["debug_mode"]==True:
         start=datetime.now()
+
+    piece=dpiece.copy_to_host()
+
 
     max_resemblance=[0, None, 0, 1]
     #maximum resemblance, location index, second max resemblance(for debugging), min resemblance (for debugging)
 
     for i in range(solution.dpieces.shape[0]):
         if solution.availability[i]==True:
+            solutionpiece=solution.dpieces[i].copy_to_host()
             resemblance=compare(dpiece, solution.dpieces[i], **params)
 
             if resemblance>max_resemblance[0]:
@@ -106,7 +159,44 @@ def preprocess_pieces(pieces, solution, pooling=None, **params):
     return (pieces, solution)
 
 
-def find_match(dto_match, dpieces, availability=None, **params):
+def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
+    valuearray=np.zeros((len(dpieces), len(dpieces)))
+    for i in range(len(dsolution)):
+        for j in range(len(dpieces)):
+            #valuearray[i, j] = compare(dsolution[i], dpieces[j], decoding="sort", **params)**2
+            valuearray[i, j] = compare_xcorr(solutionpieces[i], pieces[j], dsolution[i], dpieces[j], decoding="sort", **params)**3
+    np.savetxt("valuearray.csv", valuearray)
+    return valuearray
+
+
+def particle_solve(pieces, solution, pooling=None, **params):
+    p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
+    dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
+    dsolution = p_solution.dpieces
+    valuearray = get_valuearray(p_pieces, p_solution.pieces, dpieces, dsolution)
+    optimizer = PermutationOptimizer(len(pieces)*5, valuearray, mass=1.15, lrate=(1, 1), decoding="sort")
+    oldbest=None
+    i=0
+    while True:
+        best=optimizer.get_fitness()
+        print(i, best)
+        if not(oldbest):
+            oldbest=best
+        for _ in range(20):
+            optimizer.step()
+        if oldbest==best:
+            i+=1
+            if i>30:
+                break
+        else:
+            i=0
+        oldbest=best
+    permutation=optimizer.get()
+    solved=reassemble([pieces[index] for index in permutation], solution.shape)
+    return solved
+
+
+def find_match(dto_match, dpieces, availability=None, mask=None, **params):
     """Will only receive preprocessed device arrays! \n
         Returns the index of best matching piece from array pieces."""
 
@@ -117,33 +207,42 @@ def find_match(dto_match, dpieces, availability=None, **params):
     if availability==None:
         av_array=[True]*dpieces.shape[0]
     else:
-        assert all(e==True or e==False for e in availability) and isinstance(availability, list)
+        assert all(e==True or e==False for e in availability)
         av_array=availability
+    if mask==None:
+        mask=[True]*dpieces.shape[0]
 
-    max_resemblance=[0, None, 0, 1]
+    max_resemblance=[-1, None, -1, 1]
     #maximum resemblance, match index, second max resemblance(for debugging), min resemblance (for debugging)
-
+    solutionpiece=dto_match.copy_to_host()
     for i in range(dpieces.shape[0]):
-        if av_array[i]==True:
+        if not(mask[i]):
+            continue
+        if params["method"]=="square error":
             resemblance=compare(dpieces[i], dto_match, **params)
+        elif params["method"]=="xcorr":
+            piece=dpieces[i].copy_to_host()
+            resemblance=compare_xcorr(piece, solutionpiece, dpieces[i], dto_match, **params)
+        else:
+            raise Exception("Invalid method selection:", params["method"])
 
-            if resemblance>max_resemblance[0]:
-                if params["debug_mode"]==True:
-                    max_resemblance[2]=max_resemblance[0]
-                    if resemblance<max_resemblance[3]:
-                        max_resemblance[3]=resemblance
-                max_resemblance[0]=resemblance
-                max_resemblance[1]=i
-                if params["threshold"]!=None:
-                    if resemblance>params["threshold"]:
-                        if params["debug_mode"]==True:
-                            print("Threshold crossed")
-                        break
-            elif params["debug_mode"]==True:
-                if resemblance>max_resemblance[2]:
-                    max_resemblance[2]=resemblance
+        if resemblance>max_resemblance[0]:
+            if params["debug_mode"]==True:
+                max_resemblance[2]=max_resemblance[0]
                 if resemblance<max_resemblance[3]:
                     max_resemblance[3]=resemblance
+            max_resemblance[0]=resemblance
+            max_resemblance[1]=i
+            if params["threshold"]!=None:
+                if resemblance>params["threshold"]:
+                    if params["debug_mode"]==True:
+                        print("Threshold crossed")
+                    break
+        elif params["debug_mode"]==True:
+            if resemblance>max_resemblance[2]:
+                max_resemblance[2]=resemblance
+            if resemblance<max_resemblance[3]:
+                max_resemblance[3]=resemblance
 
     if availability!=None:
         availability[max_resemblance[1]]=False
@@ -164,48 +263,74 @@ def resize_batch(pieces, size, **params):
     return np.array(resized)
 
 
-def locate_pieces(pieces, solution, pooling=None, ids=None, **params):
+def locate_pieces_iter(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
-
-    if params["iterator"]==True and ids==None:
-        raise Exception("Iterator mode requires piece idss")
 
     p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
 
-    ordered_pieces=[]
-
-    if params["debug_mode"]==True:
+    if params["debug_mode"]:
         print("{0:<15s}{1:<15s}{2:<15s}{3:<15s}{4:<15s}".format("Piece index", "Max res.", "2nd max res.", "Min res.", "Runtime (ms)"))
 
     for i in range(len(p_solution.locations)):
-        if params["debug_mode"]==True:
+        if params["debug_mode"]:
             params["index"]=i
 
-        index=find_match(p_solution.dpieces[i], dpieces, p_solution.availability, **params)
-        if params["iterator"]==True:
-            piece=Piece(pieces[index], ids[index], p_solution.locations[i])
-            yield(piece)
+        index=find_match(p_solution.dpieces[i], dpieces, **params)
+        if not(params["id_only"]):
+            pieces[index].slot=p_solution.locations[i]
+            yield(piece[index])
         else:
-            ordered_pieces.append(pieces[index])
-
-    if params["iterator"]==False:
-        return (ordered_pieces, np.array(p_solution.locations))
+            yield((piece[index].id, p_solution.locations[i]))
 
 
-def full_solve(pieces, solution, pooling=None, ids=None, **params):
+def locate_pieces(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 
-    if params["debug_mode"]==True:
+    p_pieces, p_solution = preprocess_pieces(np.asarray(pieces.mass_get("image")), solution, pooling, **params)
+    dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
+
+    out=[]
+    piece_mask=[True]*len(pieces)
+
+    if params["debug_mode"]:
+        print(params)
+        print("{0:<15s}{1:<15s}{2:<15s}{3:<15s}{4:<15s}".format("Piece index", "Max res.", "2nd max res.", "Min res.", "Runtime (ms)"))
+
+
+    piece_locations=[-1]*len(pieces)
+    for i in range(len(p_solution.slots)):
+        if params["debug_mode"]:
+            params["index"]=i
+
+        index=find_match(p_solution.dpieces[i], dpieces, availability=p_solution.availability, mask=piece_mask, **params)
+        piece_mask[index]=False
+        piece_locations[index]=p_solution.slots[i]
+    print(piece_locations)
+    assert not(any(i is -1 for i in piece_locations))
+    if not(params["id_only"]):
+        pieces.mass_set("slot", piece_locations)
+        return pieces
+    else:
+        return(list(zip(pieces.mass_get("id"), piece_locations)))
+
+def full_solve(pieces, solution, pooling=None, **params):
+    params=param_check(params, DEFAULTS)
+
+    if params["debug_mode"]:
         start=datetime.now()
 
-    if params["iterator"]==False:
-        solved=reassemble(sort_pieces(locate_pieces(pieces, solution, pooling=pooling, **params), solution.shape), solution.shape)
-    elif isinstance(ids, list):
-        solved=locate_pieces(pieces, solution, ids=ids, pooling=pooling, **params)
-    else: raise RuntimeError()
+    if not(params["iterator_mode"]):
+        if not(params["id_only"]):
+            solved=locate_pieces(pieces, solution, pooling=pooling, **params)
+            solved=PieceCollection(solved, find_dims())
+        else:
+            solved=locate_pieces(pieces, solution, pooling=pooling, **params)
+    else:
+        raise NotImplementedError("iterator solve not properly implemented")
+        solved=locate_pieces_iter(pieces, solution, pooling=pooling, **params)
 
-    if params["debug_mode"]==True:
+    if params["debug_mode"]:
         print("Solving: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
 
     return solved
@@ -213,10 +338,10 @@ def full_solve(pieces, solution, pooling=None, ids=None, **params):
 
 def sort_pieces(located_pieces, dims):
     sorted_pieces=[[0 for column in range(dims[1])] for row in range(dims[0])]
-    for image, location in zip(located_pieces[0], located_pieces[1]):
-        sorted_pieces[location[0]][location[1]]=image
+    for piece in located_pieces:
+        sorted_pieces[piece.location[0]][piece.location[1]]=piece
 
-    return [image for row in sorted_pieces for image in row]
+    return [piece for row in sorted_pieces for piece in row]
 
 
 def reassemble(pieces, dims):
@@ -226,6 +351,10 @@ def reassemble(pieces, dims):
     if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple")
     image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
     return image
+
+
+def find_dims():
+    raise NotImplementedError()
 
 
 @cuda.jit
