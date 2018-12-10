@@ -3,7 +3,7 @@ from image_obj import Piece, PieceCollection
 import numpy as np
 from math import floor
 from PIL import ImageTk, Image
-from utils import resize
+from utils import fit_to_size, find_plot_locations
 import cv2
 
 class PuzzleCanvas(Canvas):
@@ -14,6 +14,7 @@ class PuzzleCanvas(Canvas):
         self.usage=(floor(size[0]*usage), floor(size[1]*usage))
         self.size=size
         self.collection=None
+        self.objects={}
 
 
     def configure(self, **params):
@@ -26,38 +27,29 @@ class PuzzleCanvas(Canvas):
             self.center[0]=params["width"]//2
             self.width=params["width"]
 
-    def plot_pieces(self, collection, **params):
-        "plots Piece objects from a PieceCollection based on their order (location values are ignored)"
+
+    def clear(self):
+        for ID in self.find_all():
+            self.delete(ID)
+        self.objects={}
+
+
+    def plot_pieces(self, collection, centers, **params):
+        "plots Piece objects from a PieceCollection given a set of locations"
         if not("clear" in params):
             params["clear"]=True
-
-        assert isinstance(collection, PieceCollection)
-
         if params["clear"]==True:
-            for ID in self.find_all():
-                self.delete(ID)
-            print(self.find_all())
-
-        self.resize_collection(collection)
-
-        locations=collection.mass_get("location")
-        if locations[0] is None:
-            centers = self.find_plot_locations(collection, (self.size[0]//2, self.size[1]//2))
-            collection.mass_set("location", list(centers))
-            slots=[(a,b) for a in range(collection.dims[0]) for b in range(collection.dims[1])]
-            collection.mass_set("slot", slots)
-        else:
-            centers=locations
+            self.clear()
 
         tkimages=[self.array_to_image(array) for array in collection.mass_get("plotted")]
 
-        ids=[]
 
+        ids=[]
         #plot the pieces
         for piece, piece_center, tkimage in zip(collection.get(), centers, tkimages):
-            ids.append(self.create_image(piece_center[0], piece_center[1], image=tkimage))
-
-
+            ID = self.create_image(piece_center[0], piece_center[1], image=tkimage)
+            ids.append(ID)
+            self.objects[ID] = "image"
 
         collection.mass_set("tkimage", tkimages)
         collection.mass_set("id", ids)
@@ -65,36 +57,71 @@ class PuzzleCanvas(Canvas):
         self.collection=collection
 
 
+    def plot_by_order(self, collection, **params):
+        "plots Piece objects from a PieceCollection based on their order (location values are ignored)"
+
+
+        print("order")
+        assert isinstance(collection, PieceCollection)
+        scaling = self.resize_to_usage(collection)
+
+        locations=collection.mass_get("location")
+        if locations[0] is None:
+            image=collection.mass_get("plotted")[0]
+            shape=(image.shape[0], image.shape[1])
+
+            centers = find_plot_locations(shape, collection.dims, (self.size[0]//2, self.size[1]//2))
+            collection.mass_set("location", list(centers))
+            slots=[(a,b) for a in range(collection.dims[0]) for b in range(collection.dims[1])]
+            collection.mass_set("slot", slots)
+            self.plot_pieces(collection, centers, **params)
+        else:
+            self.plot_by_location(collection, **params)
+
+        return scaling
+
+
+    def plot_by_location(self, collection, **params):
+        "plots Piece objects from a PieceCollection based on their location values"
+
+        print("location")
+        assert isinstance(collection, PieceCollection)
+
+        try:
+            self.resize_by_scaling(collection, scaling)
+        except:
+            scaling = self.resize_to_usage(collection)
+
+        centers = collection.mass_get("location")
+        self.plot_pieces(collection, centers, **params)
+
+        return scaling
+
+
     def replot(self):
-        self.plot_pieces(self.collection)
+        self.plot_by_order(self.collection)
 
 
     def array_to_image(self, array):
         return ImageTk.PhotoImage(Image.fromarray(array))
 
 
-    def find_plot_locations(self, collection, center=(400,300), reference="center"):
-        dims=collection.dims
-        image=collection.mass_get("plotted")[0]
-        piece_shape=(image.shape[0], image.shape[1])
-
-        if reference=="center":
-            full_size=np.array((piece_shape[1]*dims[1], piece_shape[0]*dims[0]))
-            centers=np.array([(x*piece_shape[1], y*piece_shape[0]) for y in range(dims[0]) for x in range(dims[1])])
-            centers+=center-full_size//2+(piece_shape[1]//2,piece_shape[0]//2)
-            return centers
-
-        else: raise NotImplementedError()
-
-
-    def resize_collection(self, collection):
+    def resize_by_scaling(self, collection, ratio):
         pieces=collection.get()
         orig_images=[piece.array for piece in pieces]
-        new_images, ratio=resize(orig_images, collection.dims, self.usage)
-
+        new_images, ratio=resize(orig_images, ratio)
         collection.mass_set("plotted", new_images)
 
-        return collection
+        return ratio
+
+
+    def resize_to_usage(self, collection):
+        pieces=collection.get()
+        orig_images=[piece.array for piece in pieces]
+        new_images, ratio=fit_to_size(orig_images, collection.dims, self.usage)
+        collection.mass_set("plotted", new_images)
+
+        return ratio
 
 
     def _diff_move(self, id, x0, y0, dx, dy, step, dt, end):
@@ -136,6 +163,7 @@ class PuzzleCanvas(Canvas):
 
         self.collection.mass_set("slot", slots)
 
+
     def move_pieces(self, iterator, start):
         raise NotImplementedError()
         self.pieces=PieceCollection([], self.pieces.dims)
@@ -147,3 +175,9 @@ class PuzzleCanvas(Canvas):
             self.after(0, self.move_pieces(iterator, start))
         except StopIteration:
             pass
+
+
+    def plot_rectangles(self, rectangle_list):
+        for box in rectangle_list:
+            ID = self.create_rectangle(box[0], box[1], box[0]+box[2], box[0]+box[3], outline="red")
+            self.objects[ID] = "rectangle"

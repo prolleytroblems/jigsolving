@@ -1,7 +1,8 @@
 from img_recog_numba import *
 from img_recog_proto import *
 from img_recog_proto import distort as protodistort
-from puzzle_gui_proto import *
+from puzzle_gui_chain import *
+#from puzzle_gui_proto import *
 from image_obj import *
 
 pool= 4
@@ -19,14 +20,11 @@ def distort(collection, delta, mode):
 
 
 def solve(path, pieces, pooling=5, method="xcorr", **params):
-    """THE SOLVE FUNCTION SHOULD RETURN ID-SLOT PAIRS THAT ARE THEN SENT TO THE CANVAS OBJECT FOR A RELOCATION OR REPLOTTING
-    THE CANVAS OBJECT SHOULD FIND THE NEXT LOCATION FROM EACH PIECE FROM EITHER AN INTERNAL ARRAY (NOT FROM THE COLLECTION), AND MOVE
-    EACH PIECE TO ITS RESPECTIVE LOCATION, CORRECTING LOCATION AND SLOT VALUES"""
-    print(1)
     id_slots = full_solve(pieces, Solution(path, pieces.dims),
                         pooling=pooling, debug_mode=True, iterator_mode=False, id_only=True, method=method)
     return id_slots
 
-functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
+#functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
+functions={"detect":lambda x:x, "solve":solve, "open":open}
 
 root=GUI(functions)

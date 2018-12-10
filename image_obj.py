@@ -54,6 +54,7 @@ class PieceCollection:
             self.dims=dims
         self.slot_dict={}
         self.id_dict={}
+        self._invalid_slots=False
 
     def get(self, slot=None, id=None):
         if slot:
@@ -62,6 +63,13 @@ class PieceCollection:
             return self.id_dict[id]
         else:
             return self._pieces
+
+    def sort(self):
+        new=[]
+        for y in range(self.dims[0]):
+            for x in range(self.dims[1]):
+                new.append(self.slot_dict[(y,x)])
+        self._pieces=new
 
     def add(self, image):
         self._pieces.insert(0, Piece(image))
@@ -78,6 +86,7 @@ class PieceCollection:
         elif attr=="location":
             for value, piece in zip(values, self._pieces):
                 piece.location = value
+            self._invalid_slots = True
         elif attr=="tkimage":
             for value, piece in zip(values, self._pieces):
                 piece.tkimage=value
@@ -85,6 +94,7 @@ class PieceCollection:
             for value, piece in zip(values, self._pieces):
                 piece.slot=value
                 self.slot_dict[value]=piece
+            self.sort()
 
     def mass_get(self, attr):
         if attr=="id":
@@ -98,6 +108,8 @@ class PieceCollection:
         elif attr=="image":
             return([piece.array for piece in self._pieces])
         elif attr=="slot":
+            if self._invalid_slots:
+                raise Exception()
             return([piece.slot for piece in self._pieces])
 
     def shuffle_collection(self, dims):

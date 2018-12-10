@@ -200,10 +200,12 @@ class GUI(Tk):
 
     def decorate_functions(self, functions):
         def open_image(path):
+            print("Opening image. Path: ", path)
+
             image=functions["open"](path)
 
             collection=PieceCollection(image, (1,1))
-            self.canvas.plot_pieces(collection, dims=(1,1), clear=True)
+            self.canvas.plot_by_order(collection, dims=(1,1), clear=True)
             self.detailslabel.configure(text="Size: " + str(image.shape[0])+" x " +
                                             str(image.shape[1]) + " pixels \nName: " +
                                             re.split(r"\\", path)[-1] + "\nFormat: "+re.split(r"\.", path)[-1])
@@ -212,20 +214,25 @@ class GUI(Tk):
             self.distortbutton.configure(state="enabled")
 
         def shuffle_image(dims):
-            collection=functions["shuffle"](self.canvas.collection, dims=dims)
+            print("Shuffling images. Dimensions: ", dims)
 
-            self.canvas.plot_pieces(collection)
+            collection=functions["shuffle"](self.canvas.collection, dims=dims)
+            self.canvas.plot_by_order(collection)
 
             self.distortbutton.configure(state="enabled")
             self.shufflebutton.configure(state="disabled")
             self.solvebutton.configure(state="enabled")
 
         def distort_image(delta, mode):
+            print("Distorting images. Type: ", mode, ". Intensity: ", delta)
+
             mode_dict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g", "Shape":"s"}
+
             self.canvas.collection.distort_collection(delta, mode_dict[mode])
             self.canvas.replot()
 
         def solve_puzzle(pooling=None, method="xcorr"):
+            print("Solving puzzle. Method: ", method, ". Pooling: ", pooling)
 
             id_slots = functions["solve"](self.image_path, self.canvas.collection,
                                     pooling=pooling, iterator_mode=False, method=method)

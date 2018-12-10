@@ -37,25 +37,32 @@ def writeimg(name, image):
         print(e)
 
 
-def resize(images, dims, size):
-    if isinstance(images, np.ndarray):
-        shape=images.shape
+def resize(images, ratio):
+    if not(isinstance(images, list)):
+        return cv2.resize(images, None, fx=ratio, fy=ratio), ratio
+    else:
+        return [cv2.resize(image, None, fx=ratio, fy=ratio) for image in images], ratio
+
+
+def fit_to_size(images, dims, size):
+
+    def fit_to_shape(shape, dims, size):
         if shape[1]/shape[0]>=1:
             ratio = size[0] / dims[1] / shape[1]
             new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
         elif shape[1]/shape[0]<1:
             ratio = size[1] / dims[0] / shape[0]
             new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
+        return new_shape, ratio
+
+    if isinstance(images, np.ndarray):
+        shape=images.shape
+        new_shape, ratio = fit_to_shape(shape, dims, size)
         return (cv2.resize(images, new_shape), ratio)
 
     elif isinstance(images, list):
         shape=images[0].shape
-        if shape[1]/shape[0]>=1:
-            ratio = size[0] / dims[1] / shape[1]
-            new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
-        elif shape[1] / shape[0] < 1:
-            ratio = size[1] / dims[0] / shape[0]
-            new_shape = ( int( ratio * shape[1] ), int( ratio * shape[0] ) )
+        new_shape, ratio = fit_to_shape(shape, dims, size)
         resized=[]
         for image in images:
             resized.append(cv2.resize(image, new_shape))
@@ -63,3 +70,21 @@ def resize(images, dims, size):
 
     else:
         raise TypeError("Images must be an ndarray or list of ndarrays")
+
+
+def extract_boxes(image, boxes):
+    subimages=[]
+    for box in boxes:
+        subimages.append(image[box[1]: box[1]+box[3], box[0]: box[0]+box[2]])
+
+    return subimages
+
+
+def find_plot_locations(shape, dims, center=(400,300), reference="center"):
+    if reference=="center":
+        full_size=np.array((shape[1]*dims[1], shape[0]*dims[0]))
+        centers=np.array([(x*shape[1], y*shape[0]) for y in range(dims[0]) for x in range(dims[1])])
+        centers+=center-full_size//2+(shape[1]//2,shape[0]//2)
+        return centers
+
+    else: raise NotImplementedError()
