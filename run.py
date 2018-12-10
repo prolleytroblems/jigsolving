@@ -1,7 +1,7 @@
 from img_recog_numba import *
 from img_recog_proto import *
 from img_recog_proto import distort as protodistort
-from puzzle_gui import *
+from puzzle_gui_proto import *
 from image_obj import *
 
 pool= 4

@@ -34,7 +34,9 @@ class PuzzleCanvas(Canvas):
         assert isinstance(collection, PieceCollection)
 
         if params["clear"]==True:
-            self.delete(self.find_all())
+            for ID in self.find_all():
+                self.delete(ID)
+            print(self.find_all())
 
         self.resize_collection(collection)
 

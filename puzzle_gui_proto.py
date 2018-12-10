@@ -203,7 +203,7 @@ class GUI(Tk):
             image=functions["open"](path)
 
             collection=PieceCollection(image, (1,1))
-            self.canvas.plot_pieces(collection, dims=(1,1))
+            self.canvas.plot_pieces(collection, dims=(1,1), clear=True)
             self.detailslabel.configure(text="Size: " + str(image.shape[0])+" x " +
                                             str(image.shape[1]) + " pixels \nName: " +
                                             re.split(r"\\", path)[-1] + "\nFormat: "+re.split(r"\.", path)[-1])
