@@ -1,6 +1,7 @@
 from pathlib import Path
 import cv2
 import numpy as np
+from copy import copy
 
 def param_check(params, defaults):
     if not(isinstance(params, dict) and isinstance(defaults, dict)): raise TypeError("Both inputs must be dictionaries.")
@@ -88,3 +89,34 @@ def find_plot_locations(shape, dims, center=(400,300), reference="center"):
         return centers
 
     else: raise NotImplementedError()
+
+
+def get_divisors(number):
+    last=None
+    current=1
+    running=True
+    divisors=[]
+    while running:
+        if number%current==0:
+            last=number//current
+            divisors.append(current)
+            divisors.append(number//current)
+        current+=1
+        if current>last:
+            running=False
+    return divisors
+
+
+def find_dims(piece_shape, piece_count, full_shape):
+    """Piece shapes in array notation (W, H), returns dim values in array notation (rows, columns)"""
+    assert isinstance(piece_count, int)
+    potential_dims=np.array(get_divisors(piece_count))
+    potential_dims=np.reshape(potential_dims, (potential_dims.shape[0]//2, 2))
+    potential_dims=np.concatenate((potential_dims, np.zeros((potential_dims.shape[0], 1))), axis=1)
+    sol_proportion = full_shape[1]/full_shape[0]
+    for pair in potential_dims:
+        score = (piece_shape[1]*pair[1]/(piece_shape[0]*pair[0])-sol_proportion)**2
+        pair[2] = score
+    index =  np.argmin(potential_dims[:, 2])
+    print(index)
+    print (potential_dims)
