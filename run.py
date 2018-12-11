@@ -24,6 +24,12 @@ def solve(path, pieces, pooling=5, method="xcorr", **params):
                         pooling=pooling, debug_mode=True, iterator_mode=False, id_only=True, method=method)
     return id_slots
 
+def detect(collection):
+    detector=Detector()
+    image=collection.get()[0].array
+    boxes=detector.predict(image)
+    return boxes
+
 #functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
 functions={"detect":lambda x:x, "solve":solve, "open":open}
 
