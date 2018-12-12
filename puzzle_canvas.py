@@ -3,7 +3,7 @@ from image_obj import Piece, PieceCollection
 import numpy as np
 from math import floor
 from PIL import ImageTk, Image
-from utils import fit_to_size, find_plot_locations
+from utils import *
 import cv2
 
 class PuzzleCanvas(Canvas):
@@ -60,8 +60,6 @@ class PuzzleCanvas(Canvas):
     def plot_by_order(self, collection, **params):
         "plots Piece objects from a PieceCollection based on their order (location values are ignored)"
 
-
-        print("order")
         assert isinstance(collection, PieceCollection)
         scaling = self.resize_to_usage(collection)
 
@@ -84,7 +82,6 @@ class PuzzleCanvas(Canvas):
     def plot_by_location(self, collection, **params):
         "plots Piece objects from a PieceCollection based on their location values"
 
-        print("location")
         assert isinstance(collection, PieceCollection)
 
         try:

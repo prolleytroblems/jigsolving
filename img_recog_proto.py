@@ -34,7 +34,6 @@ def img_split(image_or_path, dims):
     return pieces
 
 
-
 def _raw_shuffle(image, dims):
     return sample(img_split(image, dims), dims[0]*dims[1])
 
@@ -52,16 +51,6 @@ def shuffle(images, dims, prev_dims):
         return _raw_shuffle(images, dims)
     else:
         raise TypeError("Array is not legible as image.")
-
-
-def reassemble(pieces, dims):
-    """Reassembles ordered piece images into a full image"""
-    assert dims[0]*dims[1]==len(pieces)
-    pieces=np.array(pieces)
-    if not(len(pieces.shape)==4): raise TypeError("pieces must be a 4-dimensional ndarray-like object")
-    if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple")
-    image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
-    return image
 
 
 def distort(image, delta, distortion):

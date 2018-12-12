@@ -4,6 +4,7 @@ import numpy as np
 from copy import copy
 
 def param_check(params, defaults):
+    """Tool for filling out parameter list with defaults."""
     if not(isinstance(params, dict) and isinstance(defaults, dict)): raise TypeError("Both inputs must be dictionaries.")
 
     for key in defaults:
@@ -14,6 +15,7 @@ def param_check(params, defaults):
 
 
 def openimg(filepath):
+    """Wrapper for cv2.imread to correct channel order."""
     def bgr_to_rgb(image):
         b,g,r=np.split(image, 3, axis=2)
         return np.concatenate((r,g,b), axis=2)
@@ -28,6 +30,7 @@ def openimg(filepath):
 
 
 def writeimg(name, image):
+    """Wrapper for cv2.imwrite to correct channel order."""
     def rgb_to_bgr(image):
         r,g,b=np.split(image, 3, axis=2)
         return np.concatenate((b,g,r), axis=2)
@@ -46,6 +49,9 @@ def resize(images, ratio):
 
 
 def fit_to_size(images, dims, size):
+    """Rescales list or array of equally sized image arrays to fill the maximum
+        of a certain space without exceeding any dimension. Receives dims in
+        array notation, size in pixel notation."""
 
     def fit_to_shape(shape, dims, size):
         if shape[1]/shape[0]>=1:
@@ -74,6 +80,7 @@ def fit_to_size(images, dims, size):
 
 
 def extract_boxes(image, boxes):
+    """Receives an array of at least 2D and iteratable of boxes (x0,y0,w,h), returns list of subimages"""
     subimages=[]
     for box in boxes:
         subimages.append(image[box[1]: box[1]+box[3], box[0]: box[0]+box[2]])
@@ -82,16 +89,24 @@ def extract_boxes(image, boxes):
 
 
 def find_plot_locations(shape, dims, center=(400,300), reference="center"):
+    """Receives shapes and dims in array notation (H,W), center in pixel notation,
+        returns centers in pixel notation (W,H), (X,Y)"""
+    print(shape)
+    print(dims)
     if reference=="center":
         full_size=np.array((shape[1]*dims[1], shape[0]*dims[0]))
         centers=np.array([(x*shape[1], y*shape[0]) for y in range(dims[0]) for x in range(dims[1])])
         centers+=center-full_size//2+(shape[1]//2,shape[0]//2)
+        print(centers)
         return centers
 
     else: raise NotImplementedError()
 
 
 def get_divisors(number):
+    """Return a list of all divisors of given number, ordered by pairs, in
+        increasing order of the first of the two. If perfect square, last two
+        numbers are the same. e.g. 12->[1,12,2,6,3,4] """
     last=None
     current=1
     running=True
