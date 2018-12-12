@@ -91,13 +91,10 @@ def extract_boxes(image, boxes):
 def find_plot_locations(shape, dims, center=(400,300), reference="center"):
     """Receives shapes and dims in array notation (H,W), center in pixel notation,
         returns centers in pixel notation (W,H), (X,Y)"""
-    print(shape)
-    print(dims)
     if reference=="center":
         full_size=np.array((shape[1]*dims[1], shape[0]*dims[0]))
         centers=np.array([(x*shape[1], y*shape[0]) for y in range(dims[0]) for x in range(dims[1])])
-        centers+=center-full_size//2+(shape[1]//2,shape[0]//2)
-        print(centers)
+        centers+=np.array(center)-full_size//2+(shape[1]//2,shape[0]//2)
         return centers
 
     else: raise NotImplementedError()

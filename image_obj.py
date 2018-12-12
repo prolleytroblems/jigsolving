@@ -20,7 +20,6 @@ class Solution(object):
         self.slots=[(i,j) for i in range(dims[0]) for j in range(dims[1])]
         self.availability=[True]*dims[0]*dims[1]
         self.shape=dims
-        #self.locations=find_plot_locations(self.arrays[0].shape[0:2], )
 
 class Piece(object):
 

@@ -1,8 +1,8 @@
 from img_recog_numba import *
 from img_recog_proto import *
 from img_recog_proto import distort as protodistort
-from puzzle_gui_chain import *
-#from puzzle_gui_proto import *
+#from puzzle_gui_chain import *
+from puzzle_gui_proto import *
 from image_obj import *
 
 pool= 4
@@ -30,7 +30,7 @@ def detect(collection):
     boxes=detector.predict(image)
     return boxes
 
-#functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
-functions={"detect":lambda x:x, "solve":solve, "open":open}
+functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
+#functions={"detect":lambda x:x, "solve":solve, "open":open}
 
 root=GUI(functions)
