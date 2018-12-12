@@ -1,24 +1,26 @@
 from numba import cuda
 import numpy as np
 from img_recog_proto import img_split, shuffle, distort
+from utils import find_plot_locations
 
 
 class Solution(object):
-    def __init__(self, path_or_pieces, dims):
-        if isinstance(path_or_pieces, np.ndarray) and len(path_or_pieces.shape)==4:
-            self.pieces=path_or_pieces
-        elif isinstance(path_or_pieces, str):
-            self.pieces = np.array(img_split(path_or_pieces, dims))
+    def __init__(self, path_or_arrays, dims):
+        if isinstance(path_or_arrays, np.ndarray) and len(path_or_arrays.shape)==4:
+            self.arrays=path_or_arrays
+        elif isinstance(path_or_arrays, str):
+            self.arrays = np.array(img_split(path_or_arrays, dims))
         else:
             try:
-                 self.pieces=np.array(pieces)
-                 if self.pieces.shape!=4: raise Exception
+                 self.arrays=np.array(arrays)
+                 if self.arrays.shape!=4: raise Exception
             except Exception as e:
-                raise TypeError("path_or_pieces must be a path, or 4D ndarray-like of piece pbjects")
-        self.dpieces=cuda.to_device(np.ascontiguousarray(self.pieces))
+                raise TypeError("path_or_arrays must be a path, or 4D ndarray-like of array pbjects")
+        self.darrays=cuda.to_device(np.ascontiguousarray(self.arrays))
         self.slots=[(i,j) for i in range(dims[0]) for j in range(dims[1])]
         self.availability=[True]*dims[0]*dims[1]
         self.shape=dims
+        #self.locations=find_plot_locations(self.arrays[0].shape[0:2], )
 
 class Piece(object):
 
@@ -57,9 +59,13 @@ class PieceCollection:
         self._invalid_slots=False
 
     def get(self, slot=None, id=None):
-        if slot:
-            return self.slot_dict[slot]
-        elif id:
+        if not(slot is None):
+            try:
+                piece = self.slot_dict[slot]
+            except:
+                piece = self.slot_dict[tuple(slot.tolist())]
+            return piece
+        elif not(id is None):
             return self.id_dict[id]
         else:
             return self._pieces

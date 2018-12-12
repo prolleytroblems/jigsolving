@@ -99,10 +99,10 @@ def locate_one_piece(dpiece, solution, **params):
     max_resemblance=[0, None, 0, 1]
     #maximum resemblance, location index, second max resemblance(for debugging), min resemblance (for debugging)
 
-    for i in range(solution.dpieces.shape[0]):
+    for i in range(solution.darrays.shape[0]):
         if solution.availability[i]==True:
-            solutionpiece=solution.dpieces[i].copy_to_host()
-            resemblance=compare(dpiece, solution.dpieces[i], **params)
+            solutionpiece=solution.darrays[i].copy_to_host()
+            resemblance=compare(dpiece, solution.darrays[i], **params)
 
             if resemblance>max_resemblance[0]:
                 if params["debug_mode"]==True:
@@ -141,13 +141,13 @@ def preprocess_pieces(pieces, solution, pooling=None, **params):
         start=datetime.now()
 
     if not(isinstance(pieces, np.ndarray) and isinstance(solution, Solution)):raise TypeError("Wrong object type!")
-    if not(len(pieces.shape)==4 and len(solution.pieces.shape)==4): raise Exception("Incorrect array shape!")
-    if pieces.shape[0] != solution.pieces.shape[0]: raise Exception("Number of pieces don't match!")
+    if not(len(pieces.shape)==4 and len(solution.arrays.shape)==4): raise Exception("Incorrect array shape!")
+    if pieces.shape[0] != solution.arrays.shape[0]: raise Exception("Number of pieces don't match!")
 
-    if pieces.shape != solution.pieces.shape:
-        print(pieces.shape, solution.pieces.shape)
+    if pieces.shape != solution.arrays.shape:
+        print(pieces.shape, solution.arrays.shape)
         print("Piece shape mismatch!")
-        pieces=resize_batch(pieces, (solution.pieces[0].shape[0:2][::-1]), **params)
+        pieces=resize_batch(pieces, (solution.arrays[0].shape[0:2][::-1]), **params)
 
     if pooling != None and pooling != 1:
         pieces=pool(pieces, (pooling, pooling), (pooling, pooling), **params)
@@ -172,8 +172,8 @@ def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
 def particle_solve(pieces, solution, pooling=None, **params):
     p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
-    dsolution = p_solution.dpieces
-    valuearray = get_valuearray(p_pieces, p_solution.pieces, dpieces, dsolution)
+    dsolution = p_solution.darrays
+    valuearray = get_valuearray(p_pieces, p_solution.arrays, dpieces, dsolution)
     optimizer = PermutationOptimizer(len(pieces)*5, valuearray, mass=1.15, lrate=(1, 1), decoding="sort")
     oldbest=None
     i=0
@@ -276,7 +276,7 @@ def locate_pieces_iter(pieces, solution, pooling=None, **params):
         if params["debug_mode"]:
             params["index"]=i
 
-        index=find_match(p_solution.dpieces[i], dpieces, **params)
+        index=find_match(p_solution.darrays[i], dpieces, **params)
         if not(params["id_only"]):
             pieces[index].slot=p_solution.locations[i]
             yield(piece[index])
@@ -303,10 +303,10 @@ def locate_pieces(pieces, solution, pooling=None, **params):
         if params["debug_mode"]:
             params["index"]=i
 
-        index=find_match(p_solution.dpieces[i], dpieces, availability=p_solution.availability, mask=piece_mask, **params)
+        index=find_match(p_solution.darrays[i], dpieces, availability=p_solution.availability, mask=piece_mask, **params)
         piece_mask[index]=False
         piece_locations[index]=p_solution.slots[i]
-    print(piece_locations)
+        
     assert not(any(i is -1 for i in piece_locations))
     if not(params["id_only"]):
         pieces.mass_set("slot", piece_locations)
@@ -331,6 +331,10 @@ def full_solve(pieces, solution, pooling=None, **params):
         solved=locate_pieces_iter(pieces, solution, pooling=pooling, **params)
 
     if params["debug_mode"]:
+        if params["iterator"]==True:
+            print("Iterator mode: True")
+        else:
+            print("Iterator mode: False")
         print("Solving: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
 
     return solved
@@ -395,7 +399,7 @@ def pool(images_or_solution, pooling, stride, **params):
 
     elif isinstance(images_or_solution, Solution):
         dims=images_or_solution.shape
-        images_or_solution = images_or_solution.pieces
+        images_or_solution = images_or_solution.arrays
         pooled=[]
         for image in images_or_solution:
             pooled.append(pool_image(image, pooling, stride, **params))
