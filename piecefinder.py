@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+from datetime import datetime
+from IoU import IoA
 
 
 class PieceFinder(object):
@@ -7,17 +9,24 @@ class PieceFinder(object):
         cv2.setUseOptimized(True)
         cv2.setNumThreads(8)
         self.ss = cv2.ximgproc.segmentation.createSelectiveSearchSegmentation()
-        self.ss.switchToSelectiveSearchQuality()
         self.filter=BBoxFilter()
 
 
     def find_boxes(self, array):
+        start=datetime.now()
         self.ss.setBaseImage(array)
+        self.ss.switchToSelectiveSearchFast()
+        print("setup:", datetime.now()-start )
+        start=datetime.now()
         boxes=self.ss.process()
+        print("process:", datetime.now()-start )
+        start=datetime.now()
         boxes=self.filter(array, boxes)
-        try to get dimensions
+        print("filter:", datetime.now()-start )
+        start=datetime.now()
+        return boxes
 
-    def get_boxes(self, path, check_dims=False, iter=1 **kwargs):
+    def get_boxes(self, path, check_dims=False, iter=1, **kwargs):
         if iter>n:
             raise Exception("Could not find good boxes with given restrictions.")
 
@@ -47,15 +56,16 @@ class BBoxFilter(object):
         self.configure(**kwargs)
 
 
-    def configure(expansion=2, borderwidth=4, border_to_grad=0.5, **kwargs):
+    def configure(self, expansion=2, borderwidth=4, border_to_grad=0.5, **kwargs):
         self.expansion=expansion
-        self.borderwidth
+        self.borderwidth=borderwidth
         self.weights=(border_to_grad, 1-border_to_grad)
 
 
     def __call__(self, array, boxes):
-        subarrays=list(map(lambda box: self.get_subarray(array, box, 2), boxes))
-        scores=np.array(list(map(lambda subarray: self.score_array(subarray), subarrays)))
+        subarrays=list(map(lambda box: self.get_subarray(array, box, self.expansion), boxes))
+        scores=np.array(list(map(lambda subarray: self.score_array(subarray,
+                                            thiccness=self.borderwidth), subarrays)))
         del(subarrays)
 
         return self.IoA_filter(np.concatenate((boxes, scores), axis=-1))
@@ -77,7 +87,7 @@ class BBoxFilter(object):
         result=boxes[mask,...]
         return result
 
-    def get_subarray(array, box, expansion=0):
+    def get_subarray(self, array, box, expansion=0):
         corners=[box[1]-expansion, box[1]+box[3]+expansion,
                  box[0]-expansion, box[0]+box[2]+expansion]
         if corners[0]<0:
@@ -88,13 +98,13 @@ class BBoxFilter(object):
         return array[corners[0]:corners[1], corners[2]:corners[3]]
 
 
-    def shrink_array(array, layers):
+    def shrink_array(self, array, layers):
         return array[layers:array.shape[0]-layers, layers:array.shape[1]-layers]
 
 
-    def score_array(self, array):
-        b_score=self.border_score(array)
-        c_score=self.contrast_score(array)
+    def score_array(self, array, thiccness):
+        b_score=self.border_score(array, thiccness=1)
+        c_score=self.contrast_score(array, thiccness=thiccness)
         score=b_score*self.weights[0]+c_score*self.weights[1]
         return score
 
@@ -105,25 +115,27 @@ class BBoxFilter(object):
             return array[rows]
 
         def extract_v(array, collumns):
-            return array[:,collumns].T
+            print(collumns)
+            out=array[:,collumns]
+            print(out)
+            TRANSPOSING IS CAUSING PROBLEMS
+            return out.T
 
-        return {"N": extract_h(array, list(range(thiccness))),
-                "E": extract_v(array, list(range(-1, -1-thiccness, -1))),
-                "S": extract_h(array, list(range(-1, -1-thiccness, -1))),
-                "W": extract_v(array, list(range(thiccness)))}
+        return {"N": lambda x: extract_h(x, list(range(thiccness))),
+                "E": lambda x: extract_v(x, list(range(-1, -1-thiccness, -1))),
+                "S": lambda x: extract_h(x, list(range(-1, -1-thiccness, -1))),
+                "W": lambda x: extract_v(x, list(range(thiccness)))}[dir](array)
 
 
     def extract_all_borders(self, array, thiccness):
-        if thiccness==1:
-            axis=0
-            strip=np.ones((0, 3))
-        else:
-            axis=1
-            strip=np.ones((thiccness, 0, 3))
+
+        strip=np.ones((thiccness, 0, 3))
         dirs=["N", "E", "S", "W"]
         for dir in dirs:
             next_strip=self.extract_border(array, thiccness, dir)
-            np.concatenate((strip, next_strip), axis=axis)
+            print(dir, next_strip)
+            np.concatenate((strip, next_strip), axis=1)
+        print(strip)
         return strip
 
 
