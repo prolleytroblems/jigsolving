@@ -11,10 +11,10 @@ class PieceFinder(object):
         self.filter=BBoxFilter()
 
 
-    def find_boxes(self, image):
-        self.ss.setBaseImage(image)
+    def find_boxes(self, array):
+        self.ss.setBaseImage(array)
         boxes=self.ss.process()
-        boxes=self.filter(image, boxes)
+        boxes=self.filter(array, boxes)
         try to get dimensions
 
     def get_boxes(self, path, check_dims=False, iter=1 **kwargs):
@@ -50,14 +50,14 @@ class BBoxFilter(object):
         self.borderwidth
         self.weights=(border_to_grad, 1-border_to_grad)
 
-    def __call__(self, image, boxes):
+    def __call__(self, array, boxes):
         pass
 
 
-    def check(self, image):
+    def check(self, array):
         pass
 
-    def score_image(self, image):
+    def score_array(self, array):
 
         score=border_score*self.weights[0]+grad_score*self.weights[1]
         return score
@@ -89,11 +89,30 @@ class BBoxFilter(object):
             np.concatenate((strip, next_strip), axis=axis)
         return strip
 
-    def border_score(self, image, thiccness=1, color=np.array((255,255,255))):
-        border = self.extract_all_borders(image, thiccness)
+    def border_score(self, array, thiccness=1, color=np.array((255,255,255))):
+        border = self.extract_all_borders(array, thiccness)
         avg=np.sum(border, axis=(0,1))/n
         square_error=np.sum((avg-color)**2)
         score=1/(square_error+1)
+        return score
 
-    def contrast_score(self):
-        pass
+    def contrast_score(self, array, thiccness=2, exp_scaling=2, half_mark=10):
+        assert thiccness>1
+        dirs=["N", "E", "S", "W"]
+        score=0
+        for dir in dirs:
+            border = self.extract_border(array, thiccness, dir)
+            base_value = np.sum(border[0], axis=0)
+            subscore=0
+            for i in range(thiccness-1):
+                #channel-wise difference of layer averages
+                lsubscore=np.sum(border[i+1], axis=0)-base_value
+                #avg of absolute differences across channels
+                lsubscore=np.sum(np.absolute(subscore))/3
+                #scaling the value that gives score of 0.5
+                lsubscore=subscore/half_mark
+                #sigmoid normalization
+                lsubscore=subscore/(1+subscore)
+                subscore+=lsubscore
+            score+=subscore/4/thiccness-1
+        return score
