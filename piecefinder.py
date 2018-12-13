@@ -55,9 +55,27 @@ class BBoxFilter(object):
 
     def __call__(self, array, boxes):
         subarrays=list(map(lambda box: self.get_subarray(array, box, 2), boxes))
-        scores=list(map(lambda subarray: self.score_array(subarray), subarrays))
+        scores=np.array(list(map(lambda subarray: self.score_array(subarray), subarrays)))
+        del(subarrays)
+
+        return self.IoA_filter(np.concatenate((boxes, scores), axis=-1))
 
 
+    def IoA_filter(self, boxes, threshold=0.3):
+        """Boxes have 5 parameters: (x0, y0, w, h, score)"""
+        mask=np.ones((len(boxes)), dtype=np.bool)
+        for i in range(len(boxes)):
+            if mask[i]:
+                for j in range(i+1, len(boxes)):
+                    ioa=IoA(boxes[i,:4], boxes[j,:4])
+                    if any([i>threshold for i in ioa]):
+                        if boxes[i,4]>boxes[j,4]:
+                            mask[j]=False
+                        else:
+                            mask[i]=False
+                            break
+        result=boxes[mask,...]
+        return result
 
     def get_subarray(array, box, expansion=0):
         corners=[box[1]-expansion, box[1]+box[3]+expansion,
@@ -70,10 +88,8 @@ class BBoxFilter(object):
         return array[corners[0]:corners[1], corners[2]:corners[3]]
 
 
-    def shrink_arrays(arrays, layers):
-        return list(map(lambda array: array[layers:array.shape[0]-layers,
-                                            layers:array.shape[1]-layers],
-                        arrays))
+    def shrink_array(array, layers):
+        return array[layers:array.shape[0]-layers, layers:array.shape[1]-layers]
 
 
     def score_array(self, array):
