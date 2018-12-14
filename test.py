@@ -1,9 +1,11 @@
 from piecefinder import *
 import cv2
+from utils import *
 
 finder = PieceFinder()
 print("1")
-array=cv2.imread("./images/samples/bridge2.jpg")
+array=cv2.imread("./images/totalbiscuit.jpg")
+array=cv2.resize(array, None, fx=0.8, fy=0.8)
 boxes=finder.find_boxes(array)
 
 

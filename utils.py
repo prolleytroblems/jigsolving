@@ -14,6 +14,21 @@ def param_check(params, defaults):
     return params
 
 
+def apply_transformation(array, transf_matrix):
+    for y in range(array.shape[0]):
+        for x in range(array.shape[1]):
+            array[y,x,:]=np.matmul(traf_matrix,array[y,x,:])
+    return array
+
+
+def reflect(array):
+    """Flip x and y axes"""
+    flipped=np.empty((array.shape[1], array.shape[0], array.shape[2]), dtype=np.uint8)
+    for row in range(flipped.shape[0]):
+        flipped[row]=array[:,row]
+    return flipped
+
+
 def openimg(filepath):
     """Wrapper for cv2.imread to correct channel order."""
     def bgr_to_rgb(image):
@@ -52,7 +67,6 @@ def fit_to_size(images, dims, size):
     """Rescales list or array of equally sized image arrays to fill the maximum
         of a certain space without exceeding any dimension. Receives dims in
         array notation, size in pixel notation."""
-
     def fit_to_shape(shape, dims, size):
         if shape[1]/shape[0]>=1:
             ratio = size[0] / dims[1] / shape[1]
