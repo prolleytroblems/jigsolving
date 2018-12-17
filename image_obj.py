@@ -44,7 +44,7 @@ class PieceCollection:
     def __init__(self, pieces_or_images, dims):
         if isinstance(pieces_or_images[0], np.ndarray):
             images=pieces_or_images
-            if len(np.array(images).shape)==4:
+            if len(images[0].shape)==3:
                 assert dims[0]*dims[1]==len(images)
             elif len(np.array(images).shape)==3:
                 assert dims[0]*dims[1]==1
@@ -103,6 +103,8 @@ class PieceCollection:
                 piece.slot=value
                 self.slot_dict[value]=piece
             self.sort()
+        else:
+            raise Exception("This attribute does not exist.")
 
     def mass_get(self, attr):
         if attr=="id":
@@ -119,6 +121,8 @@ class PieceCollection:
             if self._invalid_slots:
                 raise Exception()
             return([piece.slot for piece in self._pieces])
+        else:
+            raise Exception("This attribute does not exist.")
 
     def shuffle_collection(self, dims):
         images=np.array(self.mass_get("image"))

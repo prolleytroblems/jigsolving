@@ -6,7 +6,8 @@ import numpy as np
 import re
 from datetime import datetime
 from image_obj import *
-
+from utils import get_subarray
+import cv2
 
 class GUI(Tk):
     """A simple gui for prototyping"""
@@ -154,7 +155,7 @@ class GUI(Tk):
             self.solution_path = solution_path
 
             collection=PieceCollection(image, (1,1))
-            self.canvas.plot_by_order(collection, dims=(1,1), clear=True)
+            self.scaling=self.canvas.plot_by_order(collection, dims=(1,1), clear=True)
             self.detailslabel.configure(text="Size: " + str(image.shape[0])+" x " +
                                             str(image.shape[1]) + " pixels \nName: " +
                                             re.split(r"\\", image_path)[-1] + "\nFormat: "+re.split(r"\.", image_path)[-1])
@@ -165,14 +166,17 @@ class GUI(Tk):
             print("Detecting pieces.")
 
             boxes = functions["detect"](self.canvas.collection)
-            array=self.canvas.collection.get()[0]
-            subimages=list(map(boxes, lambda box: get_subarray(array, box, 0)))
+            piece=self.canvas.collection.get()[0]
 
+
+            subimages=list(map(lambda box: piece.get_subimage(box), boxes))
             dims= (2,5)
             new_collection = PieceCollection(subimages, dims)
-            centers = [( (box[0]+box[2])/2, (box[1]+box[3])/2 ) for box in boxes]
+            image_center=(piece.array.shape[1]/2, piece.array.shape[0]/2)
+            centers=self.canvas.boxes_to_centers(boxes, image_center, self.scaling)
+            new_collection.mass_set("location", centers)
 
-            self.canvas.plot_by_location(new_collection, centers)
+            self.canvas.plot_by_location(new_collection, scaling=self.scaling)
             self.canvas.plot_rectangles(boxes)
 
             self.detectbutton.configure(state="disabled")

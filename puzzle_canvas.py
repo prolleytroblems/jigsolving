@@ -85,6 +85,7 @@ class PuzzleCanvas(Canvas):
         assert isinstance(collection, PieceCollection)
 
         try:
+            scaling = params["scaling"]
             self.resize_by_scaling(collection, scaling)
         except:
             scaling = self.resize_to_usage(collection)
@@ -92,7 +93,10 @@ class PuzzleCanvas(Canvas):
         centers = collection.mass_get("location")
         self.plot_pieces(collection, centers, **params)
 
-        return scaling
+        try:
+            return scaling
+        except:
+            pass
 
 
     def replot(self):
@@ -178,3 +182,13 @@ class PuzzleCanvas(Canvas):
         for box in rectangle_list:
             ID = self.create_rectangle(box[0], box[1], box[0]+box[2], box[0]+box[3], outline="red")
             self.objects[ID] = "rectangle"
+
+
+    def boxes_to_centers(self, boxes, image_center, scaling):
+        def box_to_center (box):
+            center = ( box[0]+box[2]/2, box[1]+box[3]/2 )
+            center = ( center[0]-image_center[0], center[1]-image_center[1] )
+            center = ( center[0]*scaling, center[1]*scaling)
+            return ( center[0]+self.center[0], center[1]+self.center[1] )
+
+        return list(map(box_to_center, boxes))
