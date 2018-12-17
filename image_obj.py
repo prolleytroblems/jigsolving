@@ -1,7 +1,7 @@
 from numba import cuda
 import numpy as np
 from img_recog_proto import img_split, shuffle, distort
-from utils import find_plot_locations
+from utils import find_plot_locations, get_subarray
 
 
 class Solution(object):
@@ -34,6 +34,9 @@ class Piece(object):
 
     def __get__():
         return self.array
+
+    def get_subimage(self, box):
+        return get_subarray(self.array, box)
 
 
 class PieceCollection:
