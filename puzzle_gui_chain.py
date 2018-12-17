@@ -85,7 +85,7 @@ class GUI(Tk):
 
         self.pathentry=ttk.Entry(openframe)
         self.pathentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
-        self.pathentry.insert(0,"images/bridge.jpg")
+        self.pathentry.insert(0,"images/totalbiscuit.jpg")
 
         solpathlabel=ttk.Label(openframe)
         solpathlabel.configure(text="Sol. path:")
@@ -165,8 +165,10 @@ class GUI(Tk):
             print("Detecting pieces.")
 
             boxes = functions["detect"](self.canvas.collection)
+            array=self.canvas.collection.get()[0]
+            subimages=list(map(boxes, lambda box: get_subarray(array, box, 0)))
 
-            subimages = extract_boxes(self.canvas.collection.get()[0], boxes)
+            dims= (2,5)
             new_collection = PieceCollection(subimages, dims)
             centers = [( (box[0]+box[2])/2, (box[1]+box[3])/2 ) for box in boxes]
 

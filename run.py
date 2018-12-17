@@ -1,9 +1,12 @@
 from img_recog_numba import *
 from img_recog_proto import *
 from img_recog_proto import distort as protodistort
-#from puzzle_gui_chain import *
-from puzzle_gui_proto import *
+from puzzle_gui_chain import *
+#from puzzle_gui_proto import *
 from image_obj import *
+from piecefinder import PieceFinder
+from utils import *
+import cv2
 
 pool= 4
 dims=(3,3)
@@ -25,12 +28,12 @@ def solve(path, pieces, pooling=5, method="xcorr", **params):
     return id_slots
 
 def detect(collection):
-    detector=Detector()
+    detector=PieceFinder()
     image=collection.get()[0].array
-    boxes=detector.predict(image)
+    boxes, scores = detector.find_boxes(image)
     return boxes
 
-functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
-#functions={"detect":lambda x:x, "solve":solve, "open":open}
+#functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
+functions={"detect":detect, "solve":solve, "open":open}
 
 root=GUI(functions)

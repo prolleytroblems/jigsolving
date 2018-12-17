@@ -3,6 +3,17 @@ import cv2
 import numpy as np
 from copy import copy
 
+def get_subarray(array, box, expansion=0):
+    corners=[box[1]-expansion, box[1]+box[3]+expansion,
+             box[0]-expansion, box[0]+box[2]+expansion]
+    if corners[0]<0:
+        corners[0]=0
+    if corners[2]<0:
+        corners[2]=0
+
+    return array[corners[0]:corners[1], corners[2]:corners[3]]
+
+
 def param_check(params, defaults):
     """Tool for filling out parameter list with defaults."""
     if not(isinstance(params, dict) and isinstance(defaults, dict)): raise TypeError("Both inputs must be dictionaries.")
