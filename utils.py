@@ -125,6 +125,12 @@ def find_plot_locations(shape, dims, center=(400,300), reference="center"):
     else: raise NotImplementedError()
 
 
+def location_grid(shape, dims, center, reference="center"):
+    locations=find_plot_locations(shape, dims, center=(400,300), reference="center")
+    locations=np.array(locations)
+    return np.reshape(locations, (dims[0], dims[1], 2))
+
+
 def get_divisors(number):
     """Return a list of all divisors of given number, ordered by pairs, in
         increasing order of the first of the two. If perfect square, last two

@@ -157,10 +157,13 @@ class PuzzleCanvas(Canvas):
 
 
     def update(self, id_slots):
-        slots=[pair[1] for pair in id_slots]
-        locations=[self.collection.get(slot=slot).location for slot in slots]
+        slots=list(map(lambda x: x[1], id_slots))
+        shape=self.collection.average_shape()
+        dims=self.collection.dims
+
+        locations = location_grid(shape, dims, (self.size[0]//2, self.size[1]//2))
         for i in range(len(id_slots)):
-            self._move_piece_to_target(id_slots[i][0], locations[i])
+            self._move_piece_to_target(id_slots[i][0], locations[id_slots[i][1]])
 
         self.collection.mass_set("slot", slots)
 

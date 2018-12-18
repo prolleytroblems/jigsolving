@@ -2,6 +2,7 @@ from numba import cuda
 import numpy as np
 from img_recog_proto import img_split, shuffle, distort
 from utils import find_plot_locations, get_subarray
+from functools import reduce
 
 
 class Solution(object):
@@ -133,6 +134,11 @@ class PieceCollection:
         for piece in self._pieces:
             piece.array = distort(piece.array, delta, mode)
         return self
+
+    def average_shape(self):
+        shapes=list(map(lambda x: x.shape[0:2], self.mass_get("plotted")))
+        shapes=reduce(lambda x, y:(x[0]+y[0], x[1]+y[1]), shapes)
+        return (shapes[0]/len(self), shapes[1]/len(self))
 
     def __len__(self):
         return len(self._pieces)

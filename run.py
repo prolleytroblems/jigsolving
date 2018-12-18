@@ -2,7 +2,7 @@ from img_recog_numba import *
 from img_recog_proto import *
 from img_recog_proto import distort as protodistort
 from puzzle_gui_chain import *
-#from puzzle_gui_proto import *
+from puzzle_gui_proto import *
 from image_obj import *
 from piecefinder import PieceFinder
 from utils import *
@@ -33,7 +33,7 @@ def detect(collection):
     boxes, scores = detector.find_boxes(image)
     return boxes
 
-#functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
-functions={"detect":detect, "solve":solve, "open":open}
+functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
+#functions={"detect":detect, "solve":solve, "open":open}
 
 root=GUI(functions)

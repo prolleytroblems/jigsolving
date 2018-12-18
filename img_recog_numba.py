@@ -306,13 +306,14 @@ def locate_pieces(pieces, solution, pooling=None, **params):
         index=find_match(p_solution.darrays[i], dpieces, availability=p_solution.availability, mask=piece_mask, **params)
         piece_mask[index]=False
         piece_locations[index]=p_solution.slots[i]
-        
+
     assert not(any(i is -1 for i in piece_locations))
     if not(params["id_only"]):
         pieces.mass_set("slot", piece_locations)
         return pieces
     else:
         return(list(zip(pieces.mass_get("id"), piece_locations)))
+
 
 def full_solve(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
@@ -331,7 +332,7 @@ def full_solve(pieces, solution, pooling=None, **params):
         solved=locate_pieces_iter(pieces, solution, pooling=pooling, **params)
 
     if params["debug_mode"]:
-        if params["iterator"]==True:
+        if params["iterator_mode"]==True:
             print("Iterator mode: True")
         else:
             print("Iterator mode: False")
