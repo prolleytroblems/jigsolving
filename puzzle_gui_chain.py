@@ -177,7 +177,7 @@ class GUI(Tk):
             new_collection.mass_set("location", centers)
 
             self.canvas.plot_by_location(new_collection, scaling=self.scaling)
-            self.canvas.plot_rectangles(boxes)
+            self.canvas.plot_rectangles(boxes, self.scaling)
 
             self.detectbutton.configure(state="disabled")
             self.solvebutton.configure(state="enabled")

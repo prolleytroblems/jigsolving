@@ -178,9 +178,16 @@ class PuzzleCanvas(Canvas):
             pass
 
 
-    def plot_rectangles(self, rectangle_list):
-        for box in rectangle_list:
-            ID = self.create_rectangle(box[0], box[1], box[0]+box[2], box[0]+box[3], outline="red")
+    def plot_rectangles(self, rectangle_list, scaling):
+        def rescale(box):
+            new_box = (box[0]*scaling + self.center[0] - self.usage[0]/2,
+                       box[1]*scaling + self.center[1] - self.usage[1]/2,
+                       box[2]*scaling, box[3]*scaling)
+            return new_box
+
+        rectangle_list=list(map(rescale, rectangle_list))
+        for i, box in enumerate(rectangle_list):
+            ID = self.create_rectangle(box[0], box[1], box[0]+box[2], box[1]+box[3], outline="red", width=2)
             self.objects[ID] = "rectangle"
 
 
