@@ -28,10 +28,16 @@ class PuzzleCanvas(Canvas):
             self.width=params["width"]
 
 
-    def clear(self):
-        for ID in self.find_all():
-            self.delete(ID)
-        self.objects={}
+    def clear(self, type="all"):
+        if type=="all":
+            for ID in self.find_all():
+                self.delete(ID)
+            self.objects={}
+        else:
+            for ID in self.find_all():
+                if self.objects[ID]==type:
+                    self.delete(ID)
+                    del(self.objects[ID])
 
 
     def plot_pieces(self, collection, centers, **params):

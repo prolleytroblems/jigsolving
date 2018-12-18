@@ -52,7 +52,7 @@ class BBoxFilter(object):
         self.width=edgewidth
         self.configure(**kwargs)
 
-    def configure(self, expansion=2, borderwidth=4, border_to_grad=0.5, threshold=0.7
+    def configure(self, expansion=2, borderwidth=4, border_to_grad=0.5, threshold=0.6
     , **kwargs):
         self.expansion=expansion
         self.borderwidth=borderwidth

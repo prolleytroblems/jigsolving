@@ -190,6 +190,7 @@ class GUI(Tk):
             self.detectbutton.configure(state="disabled")
             self.solvebutton.configure(state="disabled")
 
+            self.canvas.clear("rectangle")
             self.canvas.update(id_slots)
 
         new_functions = {"open": open_image, "detect": detect_pieces, "solve": solve_puzzle}
