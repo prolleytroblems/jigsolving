@@ -6,7 +6,7 @@ import numpy as np
 import re
 from datetime import datetime
 from image_obj import *
-from utils import get_subarray
+from utils import *
 import cv2
 
 class GUI(Tk):
@@ -86,7 +86,7 @@ class GUI(Tk):
 
         self.pathentry=ttk.Entry(openframe)
         self.pathentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
-        self.pathentry.insert(0,"images/totalbiscuit.jpg")
+        self.pathentry.insert(0,"images/samples/puzzle.jpg")
 
         solpathlabel=ttk.Label(openframe)
         solpathlabel.configure(text="Sol. path:")
@@ -94,7 +94,7 @@ class GUI(Tk):
 
         self.solpathentry=ttk.Entry(openframe)
         self.solpathentry.grid(column=1, row=1, pady=2, padx=5, sticky=(W,E))
-        self.solpathentry.insert(0,"images/samples/bridge_s.jpg")
+        self.solpathentry.insert(0,"images/puzzle.jpg")
 
         self.openbutton=ttk.Button(openframe, text="Open", width=20)
         self.openbutton.configure(command=lambda: functions["open"](self.pathentry.get(), self.solpathentry.get()))
@@ -168,10 +168,9 @@ class GUI(Tk):
             boxes = functions["detect"](self.canvas.collection)
             piece=self.canvas.collection.get()[0]
 
-
             subimages=list(map(lambda box: piece.get_subimage(box), boxes))
-            dims= (2,5)
-            new_collection = PieceCollection(subimages, dims)
+
+            new_collection = PieceCollection(subimages)
             image_center=(piece.array.shape[1]/2, piece.array.shape[0]/2)
             centers=self.canvas.boxes_to_centers(boxes, image_center, self.scaling)
             new_collection.mass_set("location", centers)

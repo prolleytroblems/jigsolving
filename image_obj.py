@@ -1,7 +1,7 @@
 from numba import cuda
 import numpy as np
 from img_recog_proto import img_split, shuffle, distort
-from utils import find_plot_locations, get_subarray
+from utils import find_plot_locations, get_subarray, img_split
 from functools import reduce
 
 
@@ -9,7 +9,7 @@ class Solution(object):
     def __init__(self, path_or_arrays, dims):
         if isinstance(path_or_arrays, np.ndarray) and len(path_or_arrays.shape)==4:
             self.arrays=path_or_arrays
-        elif isinstance(path_or_arrays, str):
+        elif isinstance(path_or_arrays, str) or len(path_or_arrays.shape)==3:
             self.arrays = np.array(img_split(path_or_arrays, dims))
         else:
             try:
@@ -42,16 +42,17 @@ class Piece(object):
 
 class PieceCollection:
 
-    def __init__(self, pieces_or_images, dims):
+    def __init__(self, pieces_or_images, dims=None):
         if isinstance(pieces_or_images[0], np.ndarray):
             images=pieces_or_images
-            if len(images[0].shape)==3:
-                assert dims[0]*dims[1]==len(images)
-            elif len(np.array(images).shape)==3:
-                assert dims[0]*dims[1]==1
-                images=[images]
-            else:
-                raise Exception("Invalid image object")
+            if not(dims is None):
+                if len(images[0].shape)==3:
+                    assert dims[0]*dims[1]==len(images)
+                elif len(np.array(images).shape)==3:
+                    assert dims[0]*dims[1]==1
+                    images=[images]
+                else:
+                    raise Exception("Invalid image object")
             self._pieces=[Piece(image) for image in images]
             self.dims=dims
         elif isinstance(pieces_or_images[0], Piece):

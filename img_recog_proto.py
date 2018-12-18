@@ -6,33 +6,6 @@ import math
 from utils import *
 
 
-def img_split(image_or_path, dims):
-    "Splits an image into rectangular, equally-sized pieces. Returns a list, not an ndarray."
-    if isinstance(image_or_path, str):
-        image=openimg(image_or_path)
-    elif isinstance(image_or_path, np.ndarray):
-        if len(image_or_path.shape)==3:
-            image=image_or_path
-        else:
-            raise TypeError("image_or_path must be of type str or np.ndarray")
-    else:
-        raise TypeError("image_or_path must be of type str or np.ndarray")
-
-    assert isinstance(dims, tuple)
-
-    pieces=[]
-    height=image.shape[0]/dims[0]
-    width=image.shape[1]/dims[1]
-    for y_split in range(dims[0]):
-        for x_split in range(dims[1]):
-            x_start=int(x_split*width)
-            x_end=x_start+int(width)
-            y_start=int(y_split*height)
-            y_end=y_start+int(height)
-
-            pieces.append(np.array(image[y_start: y_end, x_start: x_end]))
-    return pieces
-
 
 def _raw_shuffle(image, dims):
     return sample(img_split(image, dims), dims[0]*dims[1])

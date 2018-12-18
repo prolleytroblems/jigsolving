@@ -115,14 +115,20 @@ class ImageSplitter(object):
 
         return (out, truth_boxes)
 
-    def gen(self, in_path, out_path):
+    def gen(self, in_path, out_path, min=4):
         assert in_path.suffix==".jpg" or in_path.suffix==".png"
+        if not(out_path.exists()):
+            raise Exception("Output directory does not exist")
 
         image=cv2.imread(in_path.as_posix(), flags=1)
 
         pieces=self.flat_split(image, (4,4))
         random.shuffle(pieces)
-        pieces=pieces[:random.randint(4, len(pieces))]
+
+        if min==-1:
+            min=len(pieces)
+
+        pieces=pieces[:random.randint(min, len(pieces))]
         image, truths=self.place_pieces(pieces)
 
         new_path=out_path/in_path.name
@@ -150,8 +156,8 @@ class ImageSplitter(object):
         for image_path in self.find_images(path, extension=".jpg"):
             self.gen(image_path, spath)
 
-    def __del__(self):
-        del(self.json_writer)
+    def close(self):
+        self.json_writer.close()
 
 class TruthWriter(object):
 
@@ -167,6 +173,4 @@ class TruthWriter(object):
         file=open(self.filename, "w")
         json.dump(self.dict, file)
         file.close()
-
-    def __del__(self):
-        self.close()
+        self.dict={}
