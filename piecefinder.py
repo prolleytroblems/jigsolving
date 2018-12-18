@@ -95,6 +95,8 @@ class BBoxFilter(object):
         return array[layers:array.shape[0]-layers, layers:array.shape[1]-layers]
 
     def score_array(self, array, thiccness):
+        if array.shape[0]<thiccness*2 or array.shape[1]<thiccness*2:
+            return 0
         b_score=self.border_score(array, thiccness=1)
         c_score=self.contrast_score(array, thiccness=thiccness)
 

@@ -134,7 +134,7 @@ def locate_one_piece(dpiece, solution, **params):
     return solution.locations[max_resemblance[1]]
 
 
-def preprocess_pieces(pieces, solution, pooling=None, **params):
+def preprocess_pieces_old(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 
     if params["debug_mode"]==True:
@@ -148,6 +148,28 @@ def preprocess_pieces(pieces, solution, pooling=None, **params):
         print(pieces.shape, solution.arrays.shape)
         print("Piece shape mismatch!")
         pieces=resize_batch(pieces, (solution.arrays[0].shape[0:2][::-1]), **params)
+
+    if pooling != None and pooling != 1:
+        pieces=pool(pieces, (pooling, pooling), (pooling, pooling), **params)
+        solution=pool(solution, (pooling, pooling), (pooling, pooling), **params)
+
+    if params["debug_mode"]==True:
+        print("Preprocessing: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
+
+    return (pieces, solution)
+
+def preprocess_pieces(images, solution, pooling=None, **params):
+    params=param_check(params, DEFAULTS)
+
+    if params["debug_mode"]==True:
+        start=datetime.now()
+    target_shape=solution.arrays.shape[1:]
+    target_size=(target_shape[1], target_shape[0])
+    pieces=[]
+    for array in images:
+        if array.shape != target_shape:
+            pieces.append(cv2.resize(array, target_size))
+    pieces=np.array(pieces)
 
     if pooling != None and pooling != 1:
         pieces=pool(pieces, (pooling, pooling), (pooling, pooling), **params)
@@ -287,7 +309,7 @@ def locate_pieces_iter(pieces, solution, pooling=None, **params):
 def locate_pieces(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 
-    p_pieces, p_solution = preprocess_pieces(np.asarray(pieces.mass_get("image")), solution, pooling, **params)
+    p_pieces, p_solution = preprocess_pieces(pieces.mass_get("image"), solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
 
     out=[]
