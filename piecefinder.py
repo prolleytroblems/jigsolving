@@ -9,7 +9,7 @@ class PieceFinder(object):
         cv2.setUseOptimized(True)
         cv2.setNumThreads(8)
         self.ss = cv2.ximgproc.segmentation.createSelectiveSearchSegmentation()
-        self.filter=BBoxFilter()
+        self.filter=BBoxFilter( **kwargs)
 
     def find_boxes(self, array):
         start=datetime.now()

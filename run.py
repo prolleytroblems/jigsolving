@@ -35,18 +35,22 @@ def solve(path, collection, pooling=5, method="xcorr", **params):
                         pooling=pooling, debug_mode=True, iterator_mode=False, id_only=True, method=method)
     return id_slots
 
-def detect(collection):
-    detector=PieceFinder()
+def detect(collection, threshold):
+    detector=PieceFinder(threshold=threshold)
     image=collection.get()[0].array
     boxes, scores = detector.find_boxes(image)
     return boxes
 
+def show(path):
+    image=cv2.imread(path)
+    cv2.imshow("Solution image", image)
+    cv2.waitKey(1)
+
 genner=ImageSplitter()
 genner.gen(Path("./images/puzzle.jpg"), Path("./images/samples/"), min =-1)
 genner.close()
-print(1111)
 
 #functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
-functions={"detect":detect, "solve":solve, "open":open}
+functions={"detect":detect, "solve":solve, "open":open, "distort":distort, "show":show}
 
 root=GUI(functions)

@@ -50,10 +50,17 @@ class GUI(Tk):
         openframe.rowconfigure(2, weight=1)
         openframe.grid(column=0, row=0, sticky=(N, W, E, S), padx=2, pady=2)
 
+        distortframe=ttk.Frame(sideframe, borderwidth=2, relief="groove")
+        distortframe.columnconfigure(0, weight=1)
+        distortframe.rowconfigure(0, weight=1)
+        distortframe.rowconfigure(1, weight=1)
+        distortframe.rowconfigure(2, weight=1)
+        distortframe.grid(column=0, row=1, sticky=(N, W, E, S), padx=2, pady=2)
+
         detectframe=ttk.Frame(sideframe, borderwidth=2, relief="groove")
         detectframe.columnconfigure(0, weight=1)
         detectframe.rowconfigure(0, weight=1)
-        detectframe.grid(column=0, row=1, sticky=(N, W, E, S), padx=2, pady=2)
+        detectframe.grid(column=0, row=2, sticky=(N, W, E, S), padx=2, pady=2)
 
         solveframe=ttk.Frame(sideframe, borderwidth=2, relief="groove")
         solveframe.columnconfigure(0, weight=1)
@@ -61,22 +68,24 @@ class GUI(Tk):
         solveframe.rowconfigure(0, weight=1)
         solveframe.rowconfigure(1, weight=1)
         solveframe.rowconfigure(2, weight=1)
-        solveframe.grid(column=0, row=2, sticky=(N, W, E, S), padx=2, pady=2)
+        solveframe.rowconfigure(3, weight=1)
+        solveframe.grid(column=0, row=3, sticky=(N, W, E, S), padx=2, pady=2)
 
         fillerframe=ttk.Frame(sideframe)
         fillerframe.columnconfigure(0, weight=1)
         fillerframe.rowconfigure(0, weight=1)
-        fillerframe.grid(column=0, row=3, sticky=(N, W, E, S), padx=1, pady=1)
+        fillerframe.grid(column=0, row=4, sticky=(N, W, E, S), padx=1, pady=1)
 
         self.progress=ttk.Progressbar(sideframe, orient=HORIZONTAL, length=30, mode="determinate")
-        self.progress.grid(column=0, row=4, sticky=(E,W), padx=3)
+        self.progress.grid(column=0, row=5, sticky=(E,W), padx=3)
 
         sideframe.columnconfigure(0, weight=1)
         sideframe.rowconfigure(0, weight=5)
         sideframe.rowconfigure(1, weight=5)
-        sideframe.rowconfigure(2, weight=5)
-        sideframe.rowconfigure(3, weight=20)
-        sideframe.rowconfigure(4, weight=1)
+        sideframe.rowconfigure(2, weight=3)
+        sideframe.rowconfigure(3, weight=8)
+        sideframe.rowconfigure(4, weight=12)
+        sideframe.rowconfigure(5, weight=1)
 
         #-----------------------------
 
@@ -106,9 +115,37 @@ class GUI(Tk):
 
         #-------------------------
 
+        deltalabel=ttk.Label(distortframe)
+        deltalabel.configure(text="Delta:")
+        deltalabel.grid(column=0, row=0, sticky=W, pady=2, padx=3)
+
+        deltaentry=ttk.Entry(distortframe)
+        deltaentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
+        deltaentry.insert(0,"10")
+
+        self.disttypevar = StringVar()
+        distortcombo = ttk.Combobox(distortframe, textvariable=self.disttypevar)
+        distortcombo.configure(values=["Noise", "Brightness", "Color", "Gradient", "Shape"], state="readonly")
+        distortcombo.grid(column=0, row=1, pady=2, padx=5, columnspan=2, sticky=(W,E))
+        self.disttypevar.set("Noise")
+
+        self.distortbutton=ttk.Button(distortframe, text="Distort", width=20)
+        self.distortbutton.configure(command=lambda: functions["distort"](delta=float(deltaentry.get()), mode=self.disttypevar.get()))
+        self.distortbutton.grid(column=0, row=2, pady=2, columnspan=2)
+
+        #-------------------------
+
+        thresholdlabel=ttk.Label(detectframe)
+        thresholdlabel.configure(text="Threshold:")
+        thresholdlabel.grid(column=0, row=0, sticky=W, pady=2, padx=3)
+
+        thresholdentry=ttk.Entry(detectframe)
+        thresholdentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
+        thresholdentry.insert(0,"0.8")
+
         self.detectbutton=ttk.Button(detectframe, text="Detect", default="active", width=20)
-        self.detectbutton.grid(column=0, row=0, columnspan=4, pady=2)
-        self.detectbutton.configure(command=lambda: functions["detect"]())
+        self.detectbutton.grid(column=0, row=1, columnspan=2, pady=2)
+        self.detectbutton.configure(command=lambda: functions["detect"](threshold=float(thresholdentry.get())))
 
         #-----------------------
 
@@ -136,6 +173,10 @@ class GUI(Tk):
         self.solvebutton.configure(command=lambda: functions["solve"](pooling=int(poolvar.get()), method=self.comparevar.get()))
         self.solvebutton.grid(column=0, row=2, columnspan=2, pady=2)
 
+        self.showbutton=ttk.Button(solveframe, text="Show solution", width=15)
+        self.showbutton.configure(command=lambda: functions["show"]())
+        self.showbutton.grid(column=0, row=3, columnspan=2, pady=2)
+
         #--------------------------
 
         self.canvas=PuzzleCanvas(mainframe, size=(800,600))
@@ -143,8 +184,10 @@ class GUI(Tk):
 
         #--------------------------
 
+        self.distortbutton.configure(state="disabled")
         self.detectbutton.configure(state="disabled")
         self.solvebutton.configure(state="disabled")
+        self.showbutton.configure(state="disabled")
 
 
     def decorate_functions(self, functions):
@@ -160,12 +203,22 @@ class GUI(Tk):
                                             str(image.shape[1]) + " pixels \nName: " +
                                             re.split(r"\\", image_path)[-1] + "\nFormat: "+re.split(r"\.", image_path)[-1])
             self.detectbutton.configure(state="enabled")
+            self.distortbutton.configure(state="enabled")
             self.solvebutton.configure(state="disabled")
+            self.showbutton.configure(state="enabled")
 
-        def detect_pieces():
+        def distort_image(delta, mode):
+            print("Distorting images. Type: ", mode, ". Intensity: ", delta)
+
+            mode_dict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g", "Shape":"s"}
+
+            self.canvas.collection.distort_collection(delta, mode_dict[mode])
+            self.canvas.replot()
+
+        def detect_pieces(threshold):
             print("Detecting pieces.")
 
-            boxes = functions["detect"](self.canvas.collection)
+            boxes = functions["detect"](self.canvas.collection, threshold)
             piece=self.canvas.collection.get()[0]
 
             subimages=list(map(lambda box: piece.get_subimage(box), boxes))
@@ -189,11 +242,17 @@ class GUI(Tk):
 
             self.detectbutton.configure(state="disabled")
             self.solvebutton.configure(state="disabled")
+            self.distortbutton.configure(state="disabled")
 
             self.canvas.clear("rectangle")
             self.canvas.update(id_slots)
 
-        new_functions = {"open": open_image, "detect": detect_pieces, "solve": solve_puzzle}
+        def show_solution():
+            functions["show"](self.solution_path)
+
+        new_functions = {"open": open_image, "detect": detect_pieces,
+                         "solve": solve_puzzle, "distort": distort_image,
+                         "show": show_solution}
 
         return new_functions
 
