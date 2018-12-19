@@ -65,8 +65,9 @@ class BBoxFilter(object):
                                             thiccness=self.borderwidth), subarrays)))[...,None]
         del(subarrays)
 
-        boxes, scores = self.IoA_filter(boxes, scores)
-        return self.threshold_filter(boxes, scores, self.threshold)
+        boxes, scores = self.threshold_filter(boxes, scores, self.threshold)
+
+        return self.IoA_filter(boxes, scores)
 
     def IoA_filter(self, boxes, scores, threshold=0.3):
         """Boxes have 4 parameters: (x0, y0, w, h)"""
@@ -91,11 +92,18 @@ class BBoxFilter(object):
                 mask[i]=False
         return (boxes[mask,...], scores[mask])
 
+    def size_filter(self, box_shape, min_size):
+        if box_shape[0]<min_size:
+            return False
+        if box_shape[1]<min_size:
+            return False
+        return True
+
     def shrink_array(self, array, layers):
         return array[layers:array.shape[0]-layers, layers:array.shape[1]-layers]
 
     def score_array(self, array, thiccness):
-        if array.shape[0]<thiccness*2 or array.shape[1]<thiccness*2:
+        if not(self.size_filter(array.shape, thiccness*2)):
             return 0
         b_score=self.border_score(array, thiccness=1)
         c_score=self.contrast_score(array, thiccness=thiccness)

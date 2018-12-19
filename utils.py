@@ -4,12 +4,30 @@ import numpy as np
 from copy import copy
 
 def get_subarray(array, box, expansion=0):
-    corners=[box[1]-expansion, box[1]+box[3]+expansion,
-             box[0]-expansion, box[0]+box[2]+expansion]
-    if corners[0]<0:
-        corners[0]=0
-    if corners[2]<0:
-        corners[2]=0
+    box=(box[0]-expansion, box[1]-expansion, box[2]+2*expansion, box[3]+2*expansion)
+    if box[0]<0:
+        padding = np.ones((box[3], -box[0], 3))*255
+        subbox=(0, box[1], box[2]+box[0], box[3])
+        subarray = get_subarray(array, subbox, expansion=0)
+        return np.concatenate((padding, subarray), axis=1)
+    elif box[0]+box[2]>array.shape[1]:
+        padding = np.ones((box[3], box[0]+box[2]-array.shape[1], 3))*255
+        subbox=(box[0], box[1], array.shape[1]-box[0], box[3])
+        subarray = get_subarray(array, subbox, expansion=0)
+        return np.concatenate((subarray, padding), axis=1)
+    if box[1]<0:
+        padding = np.ones((-box[1], box[2], 3))*255
+        subbox=(box[0], 0, box[2], box[3]+box[1])
+        subarray = get_subarray(array, subbox, expansion=0)
+        return np.concatenate((padding, subarray), axis=0)
+    elif box[1]+box[3]>array.shape[0]:
+        padding = np.ones((box[1]+box[3]-array.shape[0], box[2], 3))*255
+        subbox=(box[0], box[1], box[2], array.shape[0]-box[1])
+        subarray = get_subarray(array, subbox, expansion=0)
+        return np.concatenate((subarray, padding), axis=0)
+
+    corners=(box[1], box[1]+box[3],
+             box[0], box[0]+box[2])
 
     return array[corners[0]:corners[1], corners[2]:corners[3]]
 
