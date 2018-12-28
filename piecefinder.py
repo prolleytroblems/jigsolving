@@ -14,7 +14,7 @@ class PieceFinder(object):
     def find_boxes(self, array):
         start=datetime.now()
         self.ss.setBaseImage(array)
-        self.ss.switchToSelectiveSearchFast()
+        self.ss.switchToSelectiveSearchFast(base_k=500,inc_k=300, sigma=0.8)
         print("setup:", datetime.now()-start )
         start=datetime.now()
         boxes=self.ss.process()
