@@ -49,7 +49,7 @@ def compare(dimga, dimgb, **params):
 
     gcompare[(bpgy, bpgx), (tpb, tpb)](dimga, dimgb, C)
 
-    return 1-np.sum(C)/(dimga.shape[0]*dimga.shape[1]*442)
+    return 1-np.sum(C)/(dimga.shape[0]*dimga.shape[1]*441.7)
 
 
 def statistics(array):

@@ -207,7 +207,8 @@ def find_dims(piece_shape, piece_count, full_shape):
         score = (piece_shape[1]*pair[1]/(piece_shape[0]*pair[0])-sol_proportion)**2
         pair[2] = score
     index =  np.argmin(potential_dims[:, 2])
-    return tuple(np.array(potential_dims[index, 0:2], dtype=np.uint8).tolist())
+    out = tuple(np.array(potential_dims[index, 0:2], dtype=np.uint8).tolist())
+    return out
 
 
 def reassemble(pieces, dims):

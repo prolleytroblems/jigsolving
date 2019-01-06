@@ -14,7 +14,7 @@ class LocationGenerator(object):
         self.references=None
 
     def get_grid_locations(self, count):
-        for i in range(5):
+        for i in range(10):
             if count<=i**2:
                 root_div=i
                 break
@@ -100,8 +100,8 @@ class ImageSplitter(object):
             out+=np.array_split(split, slices[0], 0)
         return out
 
-    def place_pieces(self, piece_list, max_fill=0.8):
-        assert max_fill<1 and max_fill>0
+    def place_pieces(self, piece_list, max_fill=0.9):
+        assert max_fill<=1 and max_fill>0
 
         pix_locations, piece_size=self.location_generator.get_random_positions(len(piece_list), max_fill)
         pieces=self.rescale_list(piece_list, piece_size)
@@ -115,14 +115,14 @@ class ImageSplitter(object):
 
         return (out, truth_boxes)
 
-    def gen(self, in_path, out_path, min=4):
+    def gen(self, in_path, out_path, dims=(4,4), min=-1):
         assert in_path.suffix==".jpg" or in_path.suffix==".png"
         if not(out_path.exists()):
             raise Exception("Output directory does not exist")
 
         image=cv2.imread(in_path.as_posix(), flags=1)
 
-        pieces=self.flat_split(image, (4,4))
+        pieces=self.flat_split(image, dims)
         random.shuffle(pieces)
 
         if min==-1:

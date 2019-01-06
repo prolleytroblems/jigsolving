@@ -14,10 +14,11 @@ class PieceFinder(object):
     def find_boxes(self, array):
         start=datetime.now()
         self.ss.setBaseImage(array)
-        self.ss.switchToSelectiveSearchFast(base_k=500,inc_k=300, sigma=0.8)
+        self.ss.switchToSelectiveSearchFast(base_k=200,inc_k=150, sigma=0.8)
         print("setup:", datetime.now()-start )
         start=datetime.now()
         boxes=self.ss.process()
+        print("Received ", len(boxes), " proposals.")
         print("process:", datetime.now()-start )
         start=datetime.now()
         boxes, scores=self.filter(array, boxes)
@@ -52,7 +53,7 @@ class BBoxFilter(object):
         self.width=edgewidth
         self.configure(**kwargs)
 
-    def configure(self, expansion=2, borderwidth=4, border_to_grad=0.5, threshold=0.6
+    def configure(self, expansion=2, borderwidth=4, border_to_grad=0.4, threshold=0.6
     , **kwargs):
         self.expansion=expansion
         self.borderwidth=borderwidth
@@ -134,7 +135,7 @@ class BBoxFilter(object):
             strip=np.concatenate((strip, next_strip), axis=1)
         return strip
 
-    def border_score(self, array, thiccness=1, color=np.array((255,255,255)), half_mark=30):
+    def border_score(self, array, thiccness=1, color=np.array((255,255,255)), half_mark=15):
         border = self.extract_all_borders(array, thiccness)
         avg=np.sum(border, axis=(0,1))/(border.shape[0]*border.shape[1])
         avg_error=np.sum(np.absolute(color-avg))/3
@@ -142,7 +143,7 @@ class BBoxFilter(object):
         score=1/(avg_error/half_mark+1)
         return score
 
-    def contrast_score(self, array, thiccness=2, exp_scaling=3, half_mark=10):
+    def contrast_score(self, array, thiccness=2, exp_scaling=3, half_mark=20):
         assert thiccness>1
         assert thiccness>self.expansion
         dirs=["N", "E", "S", "W"]
@@ -153,6 +154,7 @@ class BBoxFilter(object):
 
 
             subscore=0
+            #IMPLEMENT DECREASIN WEIGHTS
             for i in range(self.expansion, thiccness):
                 #channel-wise absolute difference of layer intensity averages
                 lsubscore=np.absolute(base_value-border[i])
@@ -163,6 +165,7 @@ class BBoxFilter(object):
                 #scaling the intensity difference value that gives score of 0.5
                 lsubscore=lsubscore/half_mark
                 #sigmoid normalization
+                TRY DIFFERENT NORMALIZATIOPN
                 lsubscore=lsubscore/(1+lsubscore)
                 subscore+=lsubscore
             """print(subscore)
