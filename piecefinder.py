@@ -165,7 +165,7 @@ class BBoxFilter(object):
                 #scaling the intensity difference value that gives score of 0.5
                 lsubscore=lsubscore/half_mark
                 #sigmoid normalization
-                TRY DIFFERENT NORMALIZATIOPN
+                TRY DIFFERENT NORMALIZATION
                 lsubscore=lsubscore/(1+lsubscore)
                 subscore+=lsubscore
             """print(subscore)
@@ -174,3 +174,7 @@ class BBoxFilter(object):
             cv2.destroyAllWindows()"""
             score+=subscore/4/(thiccness-self.expansion)
         return score
+
+    def sample_columns(self, array, samples):
+        columns = np.random.choice(array.shape[1], samples, replace=False)
+        return array[:, columns]
