@@ -165,7 +165,7 @@ class BBoxFilter(object):
                 #scaling the intensity difference value that gives score of 0.5
                 lsubscore=lsubscore/half_mark
                 #sigmoid normalization
-                TRY DIFFERENT NORMALIZATION
+                #TRY DIFFERENT NORMALIZATION
                 lsubscore=lsubscore/(1+lsubscore)
                 subscore+=lsubscore
             """print(subscore)

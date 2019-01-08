@@ -29,13 +29,13 @@ def shuffle(images, dims, prev_dims):
 
 def distort(image, delta, distortion):
     if not(len(np.array(image.shape))==3): raise TypeError("Array is not legible as image")
-    if distortion=="n":
+    if distortion=="g":
         return b_distort_r(image, np.float32(delta))
-    elif distortion=="s":
-        return s_distort(image, delta)
+    elif distortion=="c":
+        return c_distort(image, delta)
     elif distortion=="b":
-        return b_distort_r(image, np.uint8(delta))
-    elif distorition=="m":
+        return b_distort_f(image, np.uint8(delta))
+    elif distortion=="m":
         return m_distort(image, delta)
     elif distortion=="bl":
         return bl_distort(image, delta)
@@ -70,8 +70,8 @@ def b_distort_f(pixel, delta, res):
             res[i]=value
 
 
-def s_distort(image, delta):
-    """Randomly alter the shape of an image"""
+def c_distort(image, delta):
+    """Randomly slide image"""
     def move_one(image, axis, side="end"):
         assert axis==0 or axis==1
         #add a blank row/column
@@ -102,7 +102,11 @@ def s_distort(image, delta):
 
 def bl_distort(image, delta):
     """Gaussian blur."""
-    return gaussian_blur(array, stddev=delta, kernel_size=(5,5))
+    return gaussian_blur(image, stddev=delta, kernel_size=(5,5))
+
+def m_distort(image, delta):
+    """Motion blur."""
+    return motion_blur(image, direction=int(360*random()), kernel_size=int(delta)*2+1)
 
 
 def c_distort(image, delta):

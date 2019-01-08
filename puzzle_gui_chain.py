@@ -125,9 +125,9 @@ class GUI(Tk):
 
         self.disttypevar = StringVar()
         distortcombo = ttk.Combobox(distortframe, textvariable=self.disttypevar)
-        distortcombo.configure(values=["Noise", "Brightness", "Color", "Gradient", "Shape"], state="readonly")
+        distortcombo.configure(values=["Gaussian", "Brightness", "Motion", "Crop", "Blur"], state="readonly")
         distortcombo.grid(column=0, row=1, pady=2, padx=5, columnspan=2, sticky=(W,E))
-        self.disttypevar.set("Noise")
+        self.disttypevar.set("Gaussian")
 
         self.distortbutton=ttk.Button(distortframe, text="Distort", width=20)
         self.distortbutton.configure(command=lambda: functions["distort"](delta=float(deltaentry.get()), mode=self.disttypevar.get()))
@@ -210,7 +210,7 @@ class GUI(Tk):
         def distort_image(delta, mode):
             print("Distorting images. Type: ", mode, ". Intensity: ", delta)
 
-            mode_dict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g", "Shape":"s"}
+            mode_dict={"Gaussian":"g", "Brightness":"b", "Crop":"c", "Motion":"m", "Blur":"bl"}
 
             self.canvas.collection.distort_collection(delta, mode_dict[mode])
             self.canvas.replot()
