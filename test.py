@@ -1,31 +1,36 @@
-from piecefinder import *
-import cv2
-from utils import *
+from discretedarwin import *
 import numpy as np
+from datetime import datetime
 
-finder = PieceFinder()
-array=cv2.imread("./images/totalbiscuit.jpg")
-array=cv2.imread(".\images\DSC_0501.JPG")
-array=cv2.resize(array, None, fx=0.5, fy=0.5)
+table= np.zeros((5,5))
+table[0,3]=1
+table[1,1]=1
+table[2,0]=1
+table[3,4]=1
+table[4,2]=1
 
-filter=BBoxFilter()
-boxes, scores=finder.find_boxes(array)
-for box, score in zip(boxes, scores):
-    x, y, w, h = box
-    cv2.rectangle(array, (x, y), (x+w, y+h), (0, 255, 0), 1, cv2.LINE_AA)
-    cv2.putText(array, str(score), (x, y+h), 1, 1, (0,0,0))
+table = np.random.random((10,10))
 
-"""box=np.array((264,316,87,99))
-x,y,w,h =box
-box, score= filter(array, box[None])
-subim=np.array(array[y:y+h,x:x+w])
-cv2.rectangle(array, (x, y), (x+w, y+h), (0, 255, 0), 1, cv2.LINE_AA)
-cv2.putText(array, str(score[0]), (x, y+h), 1, 1, (0,0,0))"""
+pop=[]
+for _ in range(100000):
+    pop.append(PositionPerm(objects=-1, value_table=table, length=10))
 
-cv2.imshow("YOLO", array)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
 
-"""cv2.imshow("YOLO",subim )
-cv2.waitKey(0)
-cv2.destroyAllWindows()"""
+def fitness(chrom):
+    return chrom.fitness
+
+gen=Generation(pop)
+
+
+for i in range(100):
+    out=gen.best(10)
+print(out, fitness(out[0]))
+
+
+start=datetime.now()
+gen=gen.next_gen()
+print(datetime.now()-start)
+
+for i in range(100):
+    out=gen.best(10)
+print(out, fitness(out[0]))

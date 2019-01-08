@@ -121,7 +121,7 @@ class GUI(Tk):
 
         deltaentry=ttk.Entry(distortframe)
         deltaentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
-        deltaentry.insert(0,"10")
+        deltaentry.insert(0,"5")
 
         self.disttypevar = StringVar()
         distortcombo = ttk.Combobox(distortframe, textvariable=self.disttypevar)
