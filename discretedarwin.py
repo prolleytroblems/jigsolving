@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 import random
 from os import urandom
+from copy import deepcopy
 
 
 class Permutation(object):
@@ -14,7 +15,11 @@ class Permutation(object):
             self.objects=objects
         else:
             self.random_init(length)
-        self.fitness=fitness_func()
+        self.fitness_func=fitness_func
+        self.fitness=self.fitness_func()
+
+    def refresh(self):
+        self.fitness=self.fitness_func()
 
     def random_init(self, length):
         self.objects=list(range(length))
@@ -46,21 +51,23 @@ class PositionPerm(Permutation):
         return score
 
     def rand_crossover(self, other, cross_p):
+        new_pair = [deepcopy(self), deepcopy(other)]
         if random.random()<cross_p:
             split_loc = int(random.random()*len(self.objects))
-            self.crossover(other, split_loc)
-            other.crossover(self, split_loc)
-            EACH CROSSOVER MUST MAKLE A NEW OBJECT
-        return [self, other]
+            new_pair[0].crossover(other, split_loc)
+            new_pair[1].crossover(self, split_loc)
+        return new_pair
 
     def crossover(self, other, split_loc):
-        new_order=[]
-        to_find = self.objects[split_loc:]
+        new_order = []
+
         if split_loc>len(self.objects)//2:
+            to_find = self.objects[split_loc:]
             for gene in other.objects:
                 if gene in to_find:
                     new_order.append(gene)
         else:
+            to_find = self.objects[:split_loc]
             for gene in other.objects:
                 if not(gene in to_find):
                     new_order.append(gene)
@@ -75,34 +82,49 @@ class PositionPerm(Permutation):
             self.objects[second] = temp
 
     def rand_mutate(self, mutate_p):
+        new_perm = deepcopy(self)
         for pos in range(len(self.objects)):
-            self.rand_single_mutate(pos, mutate_p)
-        return self
+            new_perm.rand_single_mutate(pos, mutate_p)
+        return new_perm
 
 
 
 class Generation(list):
 
-    def __init__(self, chromossomes=None, cross_p=0.3, mutate_p=0.01):
+    def __init__(self, chromossomes=None, cross_p=0.2, mutate_p=0.1, elitism=0.1, selection="tournament"):
+        self.params={"selection":selection,
+                    "elitism":elitism,
+                    "cross_p":cross_p,
+                    "mutate_p":mutate_p}
         if chromossomes:
             super().__init__(chromossomes)
         else:
             super().__init__()
         random.seed(hash(urandom(4)))
 
-    def next_generation(self, size=None, elitism=0.1):
+    def update_fitness(self):
+        for chromossome in self:
+            chromossome.refresh()
+
+    def next_generation(self, size=None):
+        "size rounds to next largest pair"
         if not(isinstance(size, int)):
             size=len(self)
-        next_gen=Generation(self.best(round(elitism*len(self))))
-        for _ in range(len(self)-len(next_gen)):
-            if selection=="tournament":
+        next_gen=Generation(self.best(round(self.params["elitism"]*len(self))), **self.params)
+        left = size-len(next_gen)
+        while len(next_gen)<size:
+            if self.params["selection"]=="tournament":
                 pair=[self.tournament(), self.tournament()]
-            elif selection=="roulette":
+            elif self.params["selection"]=="roulette":
                 pair=[self.roulette(), self.roulette()]
 
-            pair=pair[0].rand_crossover(pair[1])
+            pair=pair[0].rand_crossover(pair[1], self.params["cross_p"])
             for chromossome in pair:
-                next_gen.append(chromossome.rand_mutate(mutate_p))
+                chro=chromossome.rand_mutate(self.params["mutate_p"])
+                next_gen.append(chro)
+        if len(next_gen)>size:
+            next_gen.pop()
+        next_gen.update_fitness()
         return next_gen
 
     def roulette(self):

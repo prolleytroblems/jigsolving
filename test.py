@@ -1,40 +1,49 @@
 from discretedarwin import *
 import numpy as np
 from datetime import datetime
+from copy import deepcopy
 
-table= np.zeros((5,5))
-table[0,3]=1
-table[1,1]=1
-table[2,0]=1
-table[3,4]=1
-table[4,2]=1
-
-table = np.random.random((10,10))
-
-pop=[]
-for _ in range(1000):
-    pop.append(PositionPerm(objects=-1, value_table=table, length=10))
+def one_run(mp, xp, el):
+    gen=Generation(deepcopy(pop), cross_p=xp, mutate_p=mp, elitism=el)
+    for i in range(200):
+        gen=gen.next_generation()
+    return(gen.best(1)[0].fitness)
 
 
-def fitness(chrom):
-    return chrom.fitness
-
-gen=Generation(pop)
-
-for i in range(100):
-    out=gen.best(10)
-print(out, fitness(out[0]))
+def test(tries, func):
+    tot=0
+    for _ in range(tries):
+        tot+=func()
+    return tot/tries
 
 
-pair=out[0:2]
-print(pair)
-print(pair[0].rand_crossover(pair[1], 1))
+table = np.random.random((20,20))
+for i in range(20):
+    table[i,i]=1
+table=table**4
+for j in range(10):
+    pop=[]
+    for _ in range(100):
+        pop.append(PositionPerm(objects=-1, value_table=table, length=20))
+
+    gen=Generation(deepcopy(pop), cross_p=0.1, mutate_p=0.04, elitism=0.05)
+    for i in range(600):
+        gen=gen.next_generation()
+    print(gen.best(1)[0].fitness)
 
 
-start=datetime.now()
-gen=gen.next_gen()
-print(datetime.now()-start)
+"""
+fout=open("out.txt", "w")
+header= "mutate_p, cross_p, elitism, pop_size, performance"
+fout.write(header)
+print(header)
 
-for i in range(100):
-    out=gen.best(10)
-print(out, fitness(out[0]))
+for mp in range(3, 8, 1):
+    for xp in range(10, 50, 10):
+        for el in range(4, 8, 1):
+            func=lambda : one_run(mp/100, xp/100, el/100)
+            result=test(10, func)
+            output=str(mp/100)+", "+str(xp/100)+", "+str(el/100)+", "+str(result)+"\n"
+            print(output)
+            fout.write(output)
+fout.close()"""

@@ -4,6 +4,7 @@ from random import sample, random
 from numba import cuda, guvectorize
 import math
 from utils import *
+from filters import *
 
 
 
@@ -29,16 +30,36 @@ def shuffle(images, dims, prev_dims):
 def distort(image, delta, distortion):
     if not(len(np.array(image.shape))==3): raise TypeError("Array is not legible as image")
     if distortion=="n":
-        return b_distort(image, np.float32(delta))
-    if distortion=="s":
+        return b_distort_r(image, np.float32(delta))
+    elif distortion=="s":
         return s_distort(image, delta)
+    elif distortion=="b":
+        return b_distort_r(image, np.uint8(delta))
+    elif distorition=="m":
+        return m_distort(image, delta)
+    elif distortion=="bl":
+        return bl_distort(image, delta)
     else:
         raise Exception("Not implemented!")
 
 
 @guvectorize("(uint8[:], float32, uint8[:])","(m),()->(m)")
-def b_distort(pixel, delta, res):
+def b_distort_r(pixel, delta, res):
+    "Gaussian noise."
     change=int(nrand(0, delta))
+    for i in range(3):
+        value=pixel[i]+change
+        if value>255:
+            res[i]=255
+        elif value<0:
+            res[i]=0
+        else:
+            res[i]=value
+
+@guvectorize("(uint8[:], uint8, uint8[:])","(m),()->(m)")
+def b_distort_f(pixel, delta, res):
+    "Fixed brightness change."
+    change=int(delta)
     for i in range(3):
         value=pixel[i]+change
         if value>255:
@@ -79,9 +100,9 @@ def s_distort(image, delta):
     return image
 
 
-def ub_distribution(image, delta, fixed_points):
-    """Randomly alter the brightness of an image as a whole."""
-    pass
+def bl_distort(image, delta):
+    """Gaussian blur."""
+    return gaussian_blur(array, stddev=delta, kernel_size=(5,5))
 
 
 def c_distort(image, delta):
