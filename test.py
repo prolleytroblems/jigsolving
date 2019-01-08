@@ -12,7 +12,7 @@ table[4,2]=1
 table = np.random.random((10,10))
 
 pop=[]
-for _ in range(100000):
+for _ in range(1000):
     pop.append(PositionPerm(objects=-1, value_table=table, length=10))
 
 
@@ -21,10 +21,14 @@ def fitness(chrom):
 
 gen=Generation(pop)
 
-
 for i in range(100):
     out=gen.best(10)
 print(out, fitness(out[0]))
+
+
+pair=out[0:2]
+print(pair)
+print(pair[0].rand_crossover(pair[1], 1))
 
 
 start=datetime.now()

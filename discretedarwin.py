@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 import random
-
+from os import urandom
 
 
 class Permutation(object):
@@ -47,11 +47,29 @@ class PositionPerm(Permutation):
 
     def rand_crossover(self, other, cross_p):
         if random.random()<cross_p:
-        raise NotImplementedError()
+            split_loc = int(random.random()*len(self.objects))
+            self.crossover(other, split_loc)
+            other.crossover(self, split_loc)
+            EACH CROSSOVER MUST MAKLE A NEW OBJECT
+        return [self, other]
+
+    def crossover(self, other, split_loc):
+        new_order=[]
+        to_find = self.objects[split_loc:]
+        if split_loc>len(self.objects)//2:
+            for gene in other.objects:
+                if gene in to_find:
+                    new_order.append(gene)
+        else:
+            for gene in other.objects:
+                if not(gene in to_find):
+                    new_order.append(gene)
+        self.objects[split_loc:] = new_order
+        return self
 
     def rand_single_mutate(self, pos, mutate_p):
         if random.random()<mutate_p:
-            second = random.choice(list(range(len(self.objects))))
+            second = int(random.random()*len(self.objects))
             temp = self.objects[pos]
             self.objects[pos] = self.objects[second]
             self.objects[second] = temp
@@ -59,6 +77,7 @@ class PositionPerm(Permutation):
     def rand_mutate(self, mutate_p):
         for pos in range(len(self.objects)):
             self.rand_single_mutate(pos, mutate_p)
+        return self
 
 
 
@@ -69,14 +88,16 @@ class Generation(list):
             super().__init__(chromossomes)
         else:
             super().__init__()
-        random.seed(hash(os.urandom(4)))
+        random.seed(hash(urandom(4)))
 
-    def next_generation(self, size=len(self), elitism=0.1):
+    def next_generation(self, size=None, elitism=0.1):
+        if not(isinstance(size, int)):
+            size=len(self)
         next_gen=Generation(self.best(round(elitism*len(self))))
         for _ in range(len(self)-len(next_gen)):
-            if selection="tournament":
+            if selection=="tournament":
                 pair=[self.tournament(), self.tournament()]
-            elif selection="roulette":
+            elif selection=="roulette":
                 pair=[self.roulette(), self.roulette()]
 
             pair=pair[0].rand_crossover(pair[1])
