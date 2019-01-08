@@ -21,15 +21,12 @@ table = np.random.random((20,20))
 for i in range(20):
     table[i,i]=1
 table=table**4
-for j in range(10):
-    pop=[]
-    for _ in range(100):
-        pop.append(PositionPerm(objects=-1, value_table=table, length=20))
 
-    gen=Generation(deepcopy(pop), cross_p=0.1, mutate_p=0.04, elitism=0.05)
-    for i in range(600):
-        gen=gen.next_generation()
-    print(gen.best(1)[0].fitness)
+
+optimizer =DiscreteDarwin(table, 100, 20)
+
+optimizer.run(200)
+print(optimizer.best().fitness)
 
 
 """

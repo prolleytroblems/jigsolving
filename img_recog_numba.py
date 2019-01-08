@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 from image_obj import *
 from utils import *
+from discretedarwin import DiscreteDarwin
 
 
 DEFAULTS={"debug_mode":False, "threshold":None, "iterator_mode":False, "method":"xcorr", "id_only":True}
@@ -158,6 +159,7 @@ def preprocess_pieces_old(pieces, solution, pooling=None, **params):
 
     return (pieces, solution)
 
+
 def preprocess_pieces(images, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 
@@ -191,31 +193,24 @@ def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
     return valuearray
 
 
-def particle_solve(pieces, solution, pooling=None, **params):
-    p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
+def genalg_solve(pieces, solution, pooling=None, **params):
+    p_pieces, p_solution = preprocess_pieces(pieces.mass_get("image"), solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
+
     dsolution = p_solution.darrays
     valuearray = get_valuearray(p_pieces, p_solution.arrays, dpieces, dsolution)
-    optimizer = PermutationOptimizer(len(pieces)*5, valuearray, mass=1.15, lrate=(1, 1), decoding="sort")
-    oldbest=None
-    i=0
-    while True:
-        best=optimizer.get_fitness()
-        print(i, best)
-        if not(oldbest):
-            oldbest=best
-        for _ in range(20):
-            optimizer.step()
-        if oldbest==best:
-            i+=1
-            if i>30:
-                break
-        else:
-            i=0
-        oldbest=best
-    permutation=optimizer.get()
-    solved=reassemble([pieces[index] for index in permutation], solution.shape)
-    return solved
+
+    optimizer = DiscreteDarwin(valuearray, 100, valuearray.shape[0])
+    optimizer.run(200)
+    permutation=optimizer.best()
+
+    piece_locations=list(map(lambda i: p_solution.slots[i], permutation.objects))
+
+    if not(params["id_only"]):
+        pieces.mass_set("slot", piece_locations)
+        return pieces
+    else:
+        return(list(zip(pieces.mass_get("id"), piece_locations)))
 
 
 def find_match(dto_match, dpieces, availability=None, mask=None, **params):
@@ -343,15 +338,18 @@ def full_solve(pieces, solution, pooling=None, **params):
     if params["debug_mode"]:
         start=datetime.now()
 
-    if not(params["iterator_mode"]):
-        if not(params["id_only"]):
-            solved=locate_pieces(pieces, solution, pooling=pooling, **params)
-            solved=PieceCollection(solved, find_dims())
-        else:
-            solved=locate_pieces(pieces, solution, pooling=pooling, **params)
+    if params["method"]=="genalg(xcorr)":
+        solved=genalg_solve(pieces, solution, pooling=pooling, **params)
     else:
-        raise NotImplementedError("iterator solve not properly implemented")
-        solved=locate_pieces_iter(pieces, solution, pooling=pooling, **params)
+        if not(params["iterator_mode"]):
+            if not(params["id_only"]):
+                solved=locate_pieces(pieces, solution, pooling=pooling, **params)
+                solved=PieceCollection(solved, find_dims())
+            else:
+                solved=locate_pieces(pieces, solution, pooling=pooling, **params)
+        else:
+            raise NotImplementedError("iterator solve not properly implemented")
+            solved=locate_pieces_iter(pieces, solution, pooling=pooling, **params)
 
     if params["debug_mode"]:
         if params["iterator_mode"]==True:

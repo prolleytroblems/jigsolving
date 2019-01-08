@@ -47,7 +47,7 @@ def show(path):
     cv2.waitKey(1)
 
 genner=ImageSplitter()
-genner.gen(Path("./images/puzzle.jpg"), Path("./images/samples/"), dims=(5,5), min =-1)
+genner.gen(Path("./images/puzzle.jpg"), Path("./images/samples/"), dims=(4,5), min =-1)
 genner.close()
 
 #functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}

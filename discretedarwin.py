@@ -91,7 +91,7 @@ class PositionPerm(Permutation):
 
 class Generation(list):
 
-    def __init__(self, chromossomes=None, cross_p=0.2, mutate_p=0.1, elitism=0.1, selection="tournament"):
+    def __init__(self, chromossomes=None, cross_p=0.13, mutate_p=0.04, elitism=0.05, selection="tournament"):
         self.params={"selection":selection,
                     "elitism":elitism,
                     "cross_p":cross_p,
@@ -171,5 +171,25 @@ class Generation(list):
 
 class DiscreteDarwin(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, table, pop_size, len, **kwargs):
+        assert table.shape==(len, len)
+        self.len=len
+        self.table=table
+        self.pop_size=pop_size
+        self.initialize_pop( **kwargs)
+
+    def initialize_pop(self, **kwargs):
+        self.gen=Generation(**kwargs)
+        for _ in range(self.pop_size):
+            self.gen.append(PositionPerm(-1, self.table, self.len))
+
+    def advance(self):
+        self.gen=self.gen.next_generation()
+
+    def run(self, generations):
+        for _ in range(generations):
+            self.advance()
+        return self.gen.best(1)[0]
+
+    def best(self):
+        return self.gen.best(1)[0]

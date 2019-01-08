@@ -165,7 +165,7 @@ class GUI(Tk):
 
         self.comparevar=StringVar()
         comparecombo=ttk.Combobox(solveframe, textvariable=self.comparevar, width=10)
-        comparecombo.configure(values=["xcorr", "square error"], state="readonly")
+        comparecombo.configure(values=["xcorr", "square error", "genalg(xcorr)" ], state="readonly")
         comparecombo.grid(column=1, row=1, pady=2, padx=5, sticky=(W))
         self.comparevar.set("xcorr")
 
