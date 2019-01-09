@@ -7,7 +7,7 @@ from utils import reflect, get_subarray
 class PieceFinder(object):
     def __init__(self, **kwargs):
         cv2.setUseOptimized(True)
-        cv2.setNumThreads(8)
+        cv2.setNumThreads(cv2.getNumberOfCPUs())
         self.ss = cv2.ximgproc.segmentation.createSelectiveSearchSegmentation()
         self.filter=BBoxFilter( **kwargs)
 
