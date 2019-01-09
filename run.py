@@ -23,13 +23,10 @@ def split_shuffle(collection, dims):
 def distort(collection, delta, mode):
     return collection.distort_collection(delta, mode)
 
-
 def solve(path, collection, pooling=5, method="xcorr", **params):
-    solutionimg=cv2.imread(path)
-    print(len(collection))
+    solutionimg=openimg(path)
     dims = find_dims(collection.average_shape(), len(collection), solutionimg.shape[0:2])
     collection.dims=dims
-    print(dims)
 
     id_slots = full_solve(collection, Solution(solutionimg, dims),
                         pooling=pooling, debug_mode=True, iterator_mode=False, id_only=True, method=method)

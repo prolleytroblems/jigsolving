@@ -141,7 +141,7 @@ class GUI(Tk):
 
         thresholdentry=ttk.Entry(detectframe)
         thresholdentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
-        thresholdentry.insert(0,"0.8")
+        thresholdentry.insert(0,"0.65")
 
         self.detectbutton=ttk.Button(detectframe, text="Detect", default="active", width=20)
         self.detectbutton.grid(column=0, row=1, columnspan=2, pady=2)

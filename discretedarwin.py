@@ -189,6 +189,7 @@ class DiscreteDarwin(object):
     def run(self, generations):
         for _ in range(generations):
             self.advance()
+            print(self.best().fitness)
         return self.gen.best(1)[0]
 
     def best(self):

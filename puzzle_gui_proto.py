@@ -149,13 +149,13 @@ class GUI(Tk):
 
         deltaentry=ttk.Entry(distortframe)
         deltaentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
-        deltaentry.insert(0,"10")
+        deltaentry.insert(0,"5")
 
         self.disttypevar = StringVar()
         distortcombo = ttk.Combobox(distortframe, textvariable=self.disttypevar)
-        distortcombo.configure(values=["Noise", "Brightness", "Color", "Gradient", "Shape"], state="readonly")
+        distortcombo.configure(values=["Gaussian", "Brightness", "Motion", "Crop", "Blur"], state="readonly")
         distortcombo.grid(column=0, row=1, pady=2, padx=5, columnspan=2, sticky=(W,E))
-        self.disttypevar.set("Noise")
+        self.disttypevar.set("Gaussian")
 
         self.distortbutton=ttk.Button(distortframe, text="Distort", width=20)
         self.distortbutton.configure(command=lambda: functions["distort"](delta=float(deltaentry.get()), mode=self.disttypevar.get()))
@@ -178,7 +178,7 @@ class GUI(Tk):
 
         self.comparevar=StringVar()
         comparecombo=ttk.Combobox(solveframe, textvariable=self.comparevar, width=10)
-        comparecombo.configure(values=["xcorr", "square error"], state="readonly")
+        comparecombo.configure(values=["xcorr", "square error", "genalg(xcorr)" ], state="readonly")
         comparecombo.grid(column=1, row=1, pady=2, padx=5, sticky=(W))
         self.comparevar.set("xcorr")
 
@@ -226,7 +226,7 @@ class GUI(Tk):
         def distort_image(delta, mode):
             print("Distorting images. Type: ", mode, ". Intensity: ", delta)
 
-            mode_dict={"Noise":"n", "Brightness":"b", "Color":"c", "Gradient":"g", "Shape":"s"}
+            mode_dict={"Gaussian":"g", "Brightness":"b", "Crop":"c", "Motion":"m", "Blur":"bl"}
 
             self.canvas.collection.distort_collection(delta, mode_dict[mode])
             self.canvas.replot()

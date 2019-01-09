@@ -32,10 +32,13 @@ def get_subarray(array, box, expansion=0):
     return array[corners[0]:corners[1], corners[2]:corners[3]]
 
 
-def img_split(image_or_path, dims):
+def img_split(image_or_path, dims, invert=True):
     "Splits an image into rectangular, equally-sized pieces. Returns a list, not an ndarray."
     if isinstance(image_or_path, str):
-        image=openimg(image_or_path)
+        if invert:
+            image=openimg(image_or_path)
+        else:
+            image=cv2.imread(image_or_path)
     elif isinstance(image_or_path, np.ndarray):
         if len(image_or_path.shape)==3:
             image=image_or_path
