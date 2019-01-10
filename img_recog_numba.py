@@ -448,6 +448,14 @@ def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
     return valuearray
 
 def reduce_search(valuearray):
+    raise NotImplementedError()
+    exclusion_mask_rows=np.ones((valuearray.shape[0]), dtype=boolean)
+    exclusion_mask_cols=np.ones((valuearray.shape[0]), dtype=boolean)
+    for i, row in enumerate(valuearray):
+        if np.argmax(valuearray[:, np.argmax(row)]) == i:
+            exclusion_mask[i] = False
+        else:
+            pass
 
     return (new_valuearray, partial_solution)
 
@@ -458,16 +466,17 @@ def genalg_solve(pieces, solution, pooling=None, **params):
     dsolution = p_solution.darrays
     valuearray = get_valuearray(p_pieces, p_solution.arrays, dpieces, dsolution)
 
-    valuearray, partial_solution = reduce_search(valuearray)
+    #valuearray, partial_solution = reduce_search(valuearray)
 
     optimizer = DiscreteDarwin(valuearray, 100, valuearray.shape[0] )
     optimizer.run(200)
     permutation=optimizer.best()
-    permutation=iter(permutation.objects)
+
+    """permutation=iter(permutation.objects)
     for position, object in enumerate(partial_solution):
         if object == -1:
             partial_solution[position] == next(permutation)
-    permutation=partial_solution
+    permutation=partial_solution"""
 
     try:
         next(permutation)

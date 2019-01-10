@@ -9,6 +9,7 @@ from image_obj import *
 from utils import *
 import cv2
 
+
 class GUI(Tk):
     """A simple gui for prototyping"""
 
@@ -71,21 +72,27 @@ class GUI(Tk):
         solveframe.rowconfigure(3, weight=1)
         solveframe.grid(column=0, row=3, sticky=(N, W, E, S), padx=2, pady=2)
 
+        configframe=ttk.Frame(sideframe, borderwidth=2, relief="groove")
+        configframe.columnconfigure(0, weight=1)
+        configframe.rowconfigure(0, weight=1)
+        configframe.grid(column=0, row=4, sticky=(N, W, E, S), padx=2, pady=2)
+
         fillerframe=ttk.Frame(sideframe)
         fillerframe.columnconfigure(0, weight=1)
         fillerframe.rowconfigure(0, weight=1)
-        fillerframe.grid(column=0, row=4, sticky=(N, W, E, S), padx=1, pady=1)
+        fillerframe.grid(column=0, row=5, sticky=(N, W, E, S), padx=1, pady=1)
 
         self.progress=ttk.Progressbar(sideframe, orient=HORIZONTAL, length=30, mode="determinate")
-        self.progress.grid(column=0, row=5, sticky=(E,W), padx=3)
+        self.progress.grid(column=0, row=6, sticky=(E,W), padx=3)
 
         sideframe.columnconfigure(0, weight=1)
         sideframe.rowconfigure(0, weight=5)
         sideframe.rowconfigure(1, weight=5)
         sideframe.rowconfigure(2, weight=3)
         sideframe.rowconfigure(3, weight=8)
-        sideframe.rowconfigure(4, weight=12)
-        sideframe.rowconfigure(5, weight=1)
+        sideframe.rowconfigure(4, weight=2)
+        sideframe.rowconfigure(5, weight=12)
+        sideframe.rowconfigure(6, weight=1)
 
         #-----------------------------
 
@@ -147,8 +154,9 @@ class GUI(Tk):
         self.detectbutton.grid(column=0, row=1, columnspan=2, pady=2)
         self.detectbutton.configure(command=lambda: functions["detect"](threshold=float(thresholdentry.get())))
 
-        #-----------------------
+        #INCLUDE SELECTIVE SEARCH PARAMS (3)
 
+        #-----------------------
 
         poollabel=ttk.Label(solveframe)
         poollabel.configure(text="Pooling:")
@@ -176,6 +184,14 @@ class GUI(Tk):
         self.showbutton=ttk.Button(solveframe, text="Show solution", width=15)
         self.showbutton.configure(command=lambda: functions["show"]())
         self.showbutton.grid(column=0, row=3, columnspan=2, pady=2)
+
+        #INCLUDE genalg parameters: (mutate, cross, elitism) population, generations,
+
+        #--------------------------
+
+        self.configbutton=ttk.Button(configframe, text="Configure", width=15)
+        self.configbutton.configure(command=self.open_config)
+        self.configbutton.grid(column=0, row=0, pady=2)
 
         #--------------------------
 
@@ -255,6 +271,10 @@ class GUI(Tk):
                          "show": show_solution}
 
         return new_functions
+
+    def open_config(self):
+        window=configui.Configui("params.json")
+
 
 def main():
     window=GUI({"solve":lambda x:x, "shuffle":lambda x:x, "open":lambda x:x})
