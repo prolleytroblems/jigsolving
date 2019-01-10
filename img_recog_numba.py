@@ -438,7 +438,6 @@ def main():
 if __name__ == '__main__':
     main()
 
-
 def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
     valuearray=np.zeros((len(dpieces), len(dpieces)))
     for i in range(len(dsolution)):
@@ -448,6 +447,10 @@ def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
     np.savetxt("valuearray.csv", valuearray)
     return valuearray
 
+def reduce_search(valuearray):
+
+    return (new_valuearray, partial_solution)
+
 def genalg_solve(pieces, solution, pooling=None, **params):
     p_pieces, p_solution = preprocess_pieces(pieces.mass_get("image"), solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
@@ -455,9 +458,23 @@ def genalg_solve(pieces, solution, pooling=None, **params):
     dsolution = p_solution.darrays
     valuearray = get_valuearray(p_pieces, p_solution.arrays, dpieces, dsolution)
 
+    valuearray, partial_solution = reduce_search(valuearray)
+
     optimizer = DiscreteDarwin(valuearray, 100, valuearray.shape[0] )
     optimizer.run(200)
     permutation=optimizer.best()
+    permutation=iter(permutation.objects)
+    for position, object in enumerate(partial_solution):
+        if object == -1:
+            partial_solution[position] == next(permutation)
+    permutation=partial_solution
+
+    try:
+        next(permutation)
+        raise Exception("damn")
+    except StopIteration:
+        pass
+
     print(permutation)
 
     piece_locations=[-1]*len(pieces)
