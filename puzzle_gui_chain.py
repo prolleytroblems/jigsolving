@@ -163,9 +163,16 @@ class GUI(Tk):
         poollabel.grid(column=0, row=0, sticky=W, pady=2, padx=3)
 
         poolvar=StringVar()
-        poolspin=Spinbox(solveframe, from_=1, to=10, textvariable=poolvar, width=10)
-        poolspin.grid(column=1, row=0, pady=2, padx=5, sticky=(W))
+        poolspin=Spinbox(solveframe, from_=1, to=10, textvariable=poolvar, width=6)
+        poolspin.grid(column=1, row=0, pady=2, padx=4, sticky=(W))
         poolvar.set("5")
+
+        self.poolmet=StringVar()
+        poolcombo=ttk.Combobox(solveframe, textvariable=self.poolmet, width=6)
+        poolcombo.grid(column=2, row=0, pady=2, padx=4, sticky=(W))
+        poolcombo.configure(values=["max", "avg" ], state="readonly")
+        self.poolmet.set("avg")
+
 
         comparelabel=ttk.Label(solveframe)
         comparelabel.configure(text="Method:")
@@ -174,16 +181,17 @@ class GUI(Tk):
         self.comparevar=StringVar()
         comparecombo=ttk.Combobox(solveframe, textvariable=self.comparevar, width=10)
         comparecombo.configure(values=["xcorr", "square error", "genalg(xcorr)" ], state="readonly")
-        comparecombo.grid(column=1, row=1, pady=2, padx=5, sticky=(W))
+        comparecombo.grid(column=1, row=1, columnspan=2, pady=2, padx=5, sticky=(W))
         self.comparevar.set("xcorr")
 
         self.solvebutton=ttk.Button(solveframe, text="Solve", width=20)
-        self.solvebutton.configure(command=lambda: functions["solve"](pooling=int(poolvar.get()), method=self.comparevar.get()))
-        self.solvebutton.grid(column=0, row=2, columnspan=2, pady=2)
+        self.solvebutton.configure(command=lambda: functions["solve"](pooling=int(poolvar.get()),
+                                    method=self.comparevar.get(), pool_method=self.poolmet.get()))
+        self.solvebutton.grid(column=0, row=2, columnspan=3, pady=2)
 
         self.showbutton=ttk.Button(solveframe, text="Show solution", width=15)
         self.showbutton.configure(command=lambda: functions["show"]())
-        self.showbutton.grid(column=0, row=3, columnspan=2, pady=2)
+        self.showbutton.grid(column=0, row=3, columnspan=3, pady=2)
 
         #INCLUDE genalg parameters: (mutate, cross, elitism) population, generations,
 
@@ -250,11 +258,12 @@ class GUI(Tk):
             self.detectbutton.configure(state="disabled")
             self.solvebutton.configure(state="enabled")
 
-        def solve_puzzle(pooling=None, method="xcorr"):
+        def solve_puzzle(pooling=None, method="xcorr", pool_method="avg"):
             print("Solving puzzle. Method: ", method, ". Pooling: ", pooling)
 
             id_slots = functions["solve"](self.solution_path, self.canvas.collection,
-                                    pooling=pooling, iterator_mode=False, method=method)
+                                    pooling=pooling, iterator_mode=False, method=method,
+                                    pool_method=pool_method)
 
             self.detectbutton.configure(state="disabled")
             self.solvebutton.configure(state="disabled")

@@ -5,6 +5,7 @@ import cv2
 from image_obj import *
 from utils import *
 from discretedarwin import DiscreteDarwin
+from pooling import *
 
 
 DEFAULTS={"debug_mode":False, "threshold":None, "iterator_mode":False, "method":"xcorr", "id_only":True}
@@ -326,112 +327,6 @@ def sort_pieces(located_pieces, dims):
 
     return [piece for row in sorted_pieces for piece in row]
 
-def reassemble(pieces, dims):
-    """Reassembles ordered piece images into a full image"""
-    pieces=np.array(pieces)
-    if not(len(pieces.shape)==4): raise TypeError("pieces must be a 4-dimensional ndarray-like object")
-    if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple")
-    image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
-    return image
-
-def find_dims():
-    raise NotImplementedError()
-
-@cuda.jit
-def max_pool_unit(image, pooling, stride, pooled):
-    y, x=cuda.grid(2)
-
-    if y>pooled.shape[0] or x>pooled.shape[1]:
-        return
-    window=image[y*stride[1]:y*stride[1]+pooling[1], x*stride[0]:x*stride[0]+pooling[0], :]
-
-    pooled[y,x,0]=0
-    pooled[y,x,1]=0
-    pooled[y,x,2]=0
-
-    for i in range(pooling[0]):
-        for j in range(pooling[1]):
-            if window[i,j,0]>pooled[y,x,0]:
-                pooled[y,x,0]=window[i,j,0]
-            if window[i,j,1]>pooled[y,x,1]:
-                pooled[y,x,1]=window[i,j,1]
-            if window[i,j,2]>pooled[y,x,2]:
-                pooled[y,x,2]=window[i,j,2]
-
-def pool(images_or_solution, pooling, stride, **params):
-    params=param_check(params, DEFAULTS)
-
-    if params["debug_mode"]==True:
-        start=datetime.now()
-
-    if isinstance(images_or_solution, np.ndarray) or isinstance(images_or_solution, list):
-        assert len(np.array(images_or_solution).shape)==4
-        pooled=[]
-        for image in images_or_solution:
-            pooled.append(pool_image(image, pooling, stride, **params))
-        if params["debug_mode"]==True:
-            print("Pooling images: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
-        return np.array(pooled, dtype=np.uint8)
-
-    elif isinstance(images_or_solution, Solution):
-        dims=images_or_solution.shape
-        images_or_solution = images_or_solution.arrays
-        pooled=[]
-        for image in images_or_solution:
-            pooled.append(pool_image(image, pooling, stride, **params))
-        if params["debug_mode"]==True:
-            print("Pooling solution: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
-        return Solution(np.array(pooled, dtype=np.uint8), dims)
-
-    else: raise TypeError("images_or_solution must be an ndarray or Solution instance")
-
-def pool_image(image, pooling, stride, **params):
-    """Apply pooling to a single image. \n
-        image    ndarray \n
-        pooling  tuple of int of len=2 \n
-        stride   tuple of int of len=2 \n """
-
-    if not(pooling[0]>=stride[0] and pooling[1]>=stride[1]): raise TypeError("Pooling and stride inputs should be ndarray-like")
-    if not(len(image.shape)==3): raise TypeError("Image must be a 3D ndarray.")
-
-    pooling=np.array(pooling, dtype=np.uint8)
-    stride=np.array(stride, dtype=np.uint8)
-
-    def add_padding(image, axis, side="end"):
-        assert axis==0 or axis==1
-        if (image.shape[axis]-pooling[axis]+stride[axis])%stride[axis]==0:
-            return image
-        else:
-            #add a blank row/column
-            coeff=[0,0]
-            coeff[-axis+1]=1
-            if side=="end":
-                image=np.concatenate((image, np.zeros(((image.shape[0]-1)*coeff[0]+1,
-                        (image.shape[1]-1)*coeff[1]+1, 3), dtype=np.uint8)), axis=axis)
-                image=add_padding(image, axis, side="start")
-            elif side=="start":
-                image=np.concatenate((np.zeros(((image.shape[0]-1)*coeff[0]+1,
-                        (image.shape[1]-1)*coeff[1]+1, 3), dtype=np.uint8), image), axis=axis)
-                image=add_padding(image, axis, side="end")
-            return image
-
-    for axis in range(2):
-        image=add_padding(image, axis, "end")
-
-    final_dims=((image.shape[0]-pooling[0]+stride[0])//stride[0], (image.shape[1]-pooling[1]+stride[1])//stride[1], 3)
-    tpb=16
-    bpgy=(final_dims[0]-1)//tpb+1
-    bpgx=(final_dims[1]-1)//tpb+1
-
-    dimage=cuda.to_device(np.ascontiguousarray(image))
-    pooled=np.array(np.zeros(final_dims), dtype=np.uint8)
-    dpooled=cuda.to_device(pooled)
-
-    max_pool_unit[(bpgy, bpgx), (tpb, tpb)](dimage, pooling, stride, dpooled)
-
-    dpooled.to_host()
-
-    return pooled
 
 def main():
     pass
