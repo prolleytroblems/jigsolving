@@ -11,7 +11,7 @@ from dataset import *
 from pathlib import Path
 
 pool= 4
-dims=(3,3)
+dims=(4,4)
 brightness_delta=30
 
 def open(path):
@@ -44,7 +44,7 @@ def show(path):
     cv2.waitKey(1)
 
 genner=ImageSplitter()
-genner.gen(Path("./images/puzzle.jpg"), Path("./images/samples/"), dims=(4,5), min =-1)
+genner.gen(Path("./images/puzzle.jpg"), Path("./images/samples/"), dims=dims, min =-1)
 genner.close()
 
 #functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}

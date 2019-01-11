@@ -102,7 +102,7 @@ def c_distort(image, delta):
 
 def bl_distort(image, delta):
     """Gaussian blur."""
-    return gaussian_blur(image, stddev=delta, kernel_size=(5,5))
+    return gaussian_blur(image, stddev=delta, kernel_size=(int(delta)*2+1, int(delta)*2+1))
 
 def m_distort(image, delta):
     """Motion blur."""

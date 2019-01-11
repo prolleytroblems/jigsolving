@@ -364,7 +364,8 @@ def pool(images_or_solution, pooling, stride, **params):
     if params["debug_mode"]==True:
         start=datetime.now()
 
-    if isinstance(images_or_solution, np.ndarray):
+    if isinstance(images_or_solution, np.ndarray) or isinstance(images_or_solution, list):
+        assert len(np.array(images_or_solution).shape)==4
         pooled=[]
         for image in images_or_solution:
             pooled.append(pool_image(image, pooling, stride, **params))

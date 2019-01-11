@@ -115,10 +115,16 @@ class ImageSplitter(object):
 
         return (out, truth_boxes)
 
-    def gen(self, in_path, out_path, dims=(4,4), min=-1):
-        assert in_path.suffix==".jpg" or in_path.suffix==".png"
-        if not(out_path.exists()):
-            raise Exception("Output directory does not exist")
+    def gen(self, in_path, out_location, dims=(4,4), min=-1):
+        suffix=in_path.suffix.lower()
+        assert suffix==".jpg" or suffix==".png"
+
+        if not(out_location.exists()):
+            print()
+            print("Output directory does not exist")
+            create = input("Create directory?")
+            if create == "y" or create =="Y":
+                makedirs(out_location)
 
         image=cv2.imread(in_path.as_posix(), flags=1)
 
@@ -131,7 +137,8 @@ class ImageSplitter(object):
         pieces=pieces[:random.randint(min, len(pieces))]
         image, truths=self.place_pieces(pieces)
 
-        new_path=out_path/in_path.name
+        new_path=out_location/in_path.name
+        print(new_path)
         cv2.imwrite(new_path.as_posix(), image)
         self.json_writer.add_image(new_path.as_posix(), truths)
 
