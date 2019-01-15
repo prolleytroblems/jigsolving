@@ -39,14 +39,11 @@ def motion_blur_kernel(direction=0, kernel_size=9):
 def motion_blur(array, *args, **kwargs):
     return cv2.filter2D(array, -1, motion_blur_kernel(*args, **kwargs))
 
-
-def gaussian_blur(array, stddev=3, kernel_size=(3,3)):
+def gaussian_blur(array, stddev=3, kernel_size=(9,9)):
     return cv2.GaussianBlur(array, ksize=kernel_size, sigmaX=stddev)
-
 
 def median_blur(array, kernel_size=(3,3)):
     return cv2.medianBlur(array, ksize=kernel_size)
-
 
 def normal_blur(array, kernel_size=(3,3)):
     return cv2.blur(array, ksize=kernel_size)

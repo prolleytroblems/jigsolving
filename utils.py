@@ -31,7 +31,6 @@ def get_subarray(array, box, expansion=0):
 
     return array[corners[0]:corners[1], corners[2]:corners[3]]
 
-
 def img_split(image_or_path, dims, invert=True):
     "Splits an image into rectangular, equally-sized pieces. Returns a list, not an ndarray."
     if isinstance(image_or_path, str):
@@ -62,7 +61,6 @@ def img_split(image_or_path, dims, invert=True):
             pieces.append(np.array(image[y_start: y_end, x_start: x_end]))
     return pieces
 
-
 def param_check(params, defaults):
     """Tool for filling out parameter list with defaults."""
     if not(isinstance(params, dict) and isinstance(defaults, dict)): raise TypeError("Both inputs must be dictionaries.")
@@ -73,13 +71,11 @@ def param_check(params, defaults):
 
     return params
 
-
 def apply_transformation(array, transf_matrix):
     for y in range(array.shape[0]):
         for x in range(array.shape[1]):
             array[y,x,:]=np.matmul(traf_matrix,array[y,x,:])
     return array
-
 
 def reflect(array):
     """Flip x and y axes"""
@@ -87,7 +83,6 @@ def reflect(array):
     for row in range(flipped.shape[0]):
         flipped[row]=array[:,row]
     return flipped
-
 
 def openimg(filepath):
     """Wrapper for cv2.imread to correct channel order."""
@@ -103,7 +98,6 @@ def openimg(filepath):
     except IOError as e:
         print(e)
 
-
 def writeimg(name, image):
     """Wrapper for cv2.imwrite to correct channel order."""
     def rgb_to_bgr(image):
@@ -115,13 +109,11 @@ def writeimg(name, image):
     except TypeError as e:
         print(e)
 
-
 def resize(images, ratio):
     if not(isinstance(images, list)):
         return cv2.resize(images, None, fx=ratio, fy=ratio), ratio
     else:
         return [cv2.resize(image, None, fx=ratio, fy=ratio) for image in images], ratio
-
 
 def fit_to_size(images, dims, size):
     """Rescales list or array of equally sized image arrays to fill the maximum
@@ -152,7 +144,6 @@ def fit_to_size(images, dims, size):
     else:
         raise TypeError("Images must be an ndarray or list of ndarrays")
 
-
 def extract_boxes(image, boxes):
     """Receives an array of at least 2D and iteratable of boxes (x0,y0,w,h), returns list of subimages"""
     subimages=[]
@@ -160,7 +151,6 @@ def extract_boxes(image, boxes):
         subimages.append(image[box[1]: box[1]+box[3], box[0]: box[0]+box[2]])
 
     return subimages
-
 
 def find_plot_locations(shape, dims, center=(400,300), reference="center"):
     """Receives shapes and dims in array notation (H,W), center in pixel notation,
@@ -173,12 +163,10 @@ def find_plot_locations(shape, dims, center=(400,300), reference="center"):
 
     else: raise NotImplementedError()
 
-
 def location_grid(shape, dims, center, reference="center"):
     locations=find_plot_locations(shape, dims, center=(400,300), reference="center")
     locations=np.array(locations)
     return np.reshape(locations, (dims[0], dims[1], 2))
-
 
 def get_divisors(number):
     """Return a list of all divisors of given number, ordered by pairs, in
@@ -198,7 +186,6 @@ def get_divisors(number):
             running=False
     return divisors
 
-
 def find_dims(piece_shape, piece_count, full_shape):
     """Piece shapes in array notation (W, H), returns dim values in array notation (rows, columns)"""
     assert isinstance(piece_count, int)
@@ -212,7 +199,6 @@ def find_dims(piece_shape, piece_count, full_shape):
     index =  np.argmin(potential_dims[:, 2])
     out = tuple(np.array(potential_dims[index, 0:2], dtype=np.uint8).tolist())
     return out
-
 
 def reassemble(pieces, dims):
     """Reassembles ordered piece images into a full image"""

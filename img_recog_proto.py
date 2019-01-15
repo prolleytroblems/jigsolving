@@ -11,7 +11,6 @@ from filters import *
 def _raw_shuffle(image, dims):
     return sample(img_split(image, dims), dims[0]*dims[1])
 
-
 def shuffle(images, dims, prev_dims):
     """Shuffle the image into equal rectangular pieces"""
     images=np.array(images)
@@ -25,7 +24,6 @@ def shuffle(images, dims, prev_dims):
         return _raw_shuffle(images, dims)
     else:
         raise TypeError("Array is not legible as image.")
-
 
 def distort(image, delta, distortion):
     if not(len(np.array(image.shape))==3): raise TypeError("Array is not legible as image")
@@ -41,7 +39,6 @@ def distort(image, delta, distortion):
         return bl_distort(image, delta)
     else:
         raise Exception("Not implemented!")
-
 
 @guvectorize("(uint8[:], float32, uint8[:])","(m),()->(m)")
 def b_distort_r(pixel, delta, res):
@@ -68,7 +65,6 @@ def b_distort_f(pixel, delta, res):
             res[i]=0
         else:
             res[i]=value
-
 
 def c_distort(image, delta):
     """Randomly slide image"""
@@ -99,7 +95,6 @@ def c_distort(image, delta):
 
     return image
 
-
 def bl_distort(image, delta):
     """Gaussian blur."""
     return gaussian_blur(image, stddev=delta, kernel_size=(int(delta)*2+1, int(delta)*2+1))
@@ -108,11 +103,9 @@ def m_distort(image, delta):
     """Motion blur."""
     return motion_blur(image, direction=int(360*random()), kernel_size=int(delta)*2+1)
 
-
 def c_distort(image, delta):
     """Randomly alter the color vector of each pixel of an image following a normal distribution."""
     pass
-
 
 def ub_distribution(image, delta, fixed_points):
     """Randomly alter the color of an image as a whole."""

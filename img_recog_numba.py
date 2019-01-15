@@ -327,13 +327,6 @@ def sort_pieces(located_pieces, dims):
 
     return [piece for row in sorted_pieces for piece in row]
 
-
-def main():
-    pass
-
-if __name__ == '__main__':
-    main()
-
 def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
     valuearray=np.zeros((len(dpieces), len(dpieces)))
     for i in range(len(dsolution)):
@@ -391,3 +384,10 @@ def genalg_solve(pieces, solution, pooling=None, **params):
         return pieces
     else:
         return(list(zip(pieces.mass_get("id"), piece_locations)))
+
+
+def main():
+    pass
+
+if __name__ == '__main__':
+    main()

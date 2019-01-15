@@ -108,10 +108,11 @@ class ImageSplitter(object):
         #out=np.ones((self.pix_dimensions[1], self.pix_dimensions[0], 3), dtype=np.int8)*255
         out=np.ones((self.pix_dimensions[1], self.pix_dimensions[0], 3), dtype=np.int8)*255
 
-        truth_boxes=[]
-        for pix_location, piece in zip(pix_locations, pieces):
+        truth_boxes={}
+
+        for i, pix_location, piece in zip(range(len(pieces)), pix_locations, pieces):
             out=self.place(out, piece, pix_location)
-            truth_boxes.append((pix_location[0], pix_location[1], piece.shape[1], piece.shape[0]))
+            truth_boxes[i]=[pix_location[0], pix_location[1], piece.shape[1], piece.shape[0]]
 
         return (out, truth_boxes)
 
@@ -138,7 +139,7 @@ class ImageSplitter(object):
         image, truths=self.place_pieces(pieces)
 
         new_path=out_location/in_path.name
-        print(new_path)
+        print(str(new_path)+" - "+str(len(pieces))+" pieces")
         cv2.imwrite(new_path.as_posix(), image)
         self.json_writer.add_image(new_path.as_posix(), truths)
 
@@ -146,7 +147,7 @@ class ImageSplitter(object):
         image_iterator=path.glob("*"+extension)
         return image_iterator
 
-    def gen_all(self, path):
+    def gen_all(self, path, extension=".jpg", **kwargs):
         path=Path(path)
         assert path.is_dir()
         spath=path / "samples"
@@ -160,8 +161,16 @@ class ImageSplitter(object):
             else:
                 raise E
 
-        for image_path in self.find_images(path, extension=".jpg"):
-            self.gen(image_path, spath)
+        for image_path in self.find_images(path, extension):
+            self.gen(in_path=image_path, out_location=spath, **kwargs)
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *args):
+
+        print(args)
+        self.close()
 
     def close(self):
         self.json_writer.close()

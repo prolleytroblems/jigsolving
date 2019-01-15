@@ -11,10 +11,10 @@ class PieceFinder(object):
         self.ss = cv2.ximgproc.segmentation.createSelectiveSearchSegmentation()
         self.filter=BBoxFilter( **kwargs)
 
-    def find_boxes(self, array):
+    def find_boxes(self, array, base_k=150 ,inc_k=150 , sigma=0.8):
         start=datetime.now()
         self.ss.setBaseImage(array)
-        self.ss.switchToSelectiveSearchFast(base_k=150,inc_k=150, sigma=0.8)
+        self.ss.switchToSelectiveSearchFast(base_k ,inc_k , sigma)
         print("setup:", datetime.now()-start )
         start=datetime.now()
         boxes=self.ss.process()
