@@ -361,12 +361,6 @@ def genalg_solve(pieces, solution, pooling=None, **params):
     optimizer.run(200)
     permutation=optimizer.best()
 
-    """permutation=iter(permutation.objects)
-    for position, object in enumerate(partial_solution):
-        if object == -1:
-            partial_solution[position] == next(permutation)
-    permutation=partial_solution"""
-
     try:
         next(permutation)
         raise Exception("damn")
