@@ -2,27 +2,36 @@ import cv2
 import numpy as np
 from datetime import datetime
 from IoU import IoA
-from utils import reflect, get_subarray
+from utils import reflect, get_subarray, param_check
+
+DEFAULTS = {"debug_mode":True}
 
 class PieceFinder(object):
     def __init__(self, **kwargs):
         cv2.setUseOptimized(True)
         cv2.setNumThreads(cv2.getNumberOfCPUs())
         self.ss = cv2.ximgproc.segmentation.createSelectiveSearchSegmentation()
-        self.filter=BBoxFilter( **kwargs)
+        self.filter=BBoxFilter(**kwargs)
 
-    def find_boxes(self, array, base_k=150 ,inc_k=150 , sigma=0.8):
+    def find_boxes(self, array, base_k=150 ,inc_k=150 , sigma=0.8, *args, **kwargs):
+        params=param_check(kwargs, DEFAULTS)
+        if kwargs["debug_mode"]:
+            print("-----Piece detector-----")
+
         start=datetime.now()
         self.ss.setBaseImage(array)
         self.ss.switchToSelectiveSearchFast(base_k ,inc_k , sigma)
-        print("setup:", datetime.now()-start )
+        if kwargs["debug_mode"]:
+            print("Setup: " + str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms" )
         start=datetime.now()
         boxes=self.ss.process()
-        print("Received ", len(boxes), " proposals.")
-        print("process:", datetime.now()-start )
+        if kwargs["debug_mode"]:
+            print("Received ", len(boxes), " proposals.")
+            print("Process:  " + str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms" )
         start=datetime.now()
         boxes, scores=self.filter(array, boxes)
-        print("filter:", datetime.now()-start )
+        if kwargs["debug_mode"]:
+            print("Filter: " + str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms" )
         return (boxes, scores)
 
     def get_boxes(self, path, check_dims=False, iter=1, **kwargs):

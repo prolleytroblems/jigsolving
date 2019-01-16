@@ -295,6 +295,7 @@ def full_solve(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 
     if params["debug_mode"]:
+        print("-----Solving-----")
         start=datetime.now()
 
     if params["method"]=="genalg(xcorr)":
@@ -317,8 +318,6 @@ def full_solve(pieces, solution, pooling=None, **params):
             print("Iterator mode: False")
         print("Solving: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
 
-    if params["score"]:
-        raise NotImplementedError()
     return solved
 
 def sort_pieces(located_pieces, dims):
@@ -362,18 +361,13 @@ def genalg_solve(pieces, solution, pooling=None, **params):
     optimizer.run(200)
     permutation=optimizer.best()
 
-    try:
-        next(permutation)
-        raise Exception("damn")
-    except StopIteration:
-        pass
-
     piece_locations=[-1]*len(pieces)
-    for location_index, piece_index in enumerate(permutation.objects):
+    for location_index, piece_index in enumerate(permutation):
         piece_locations[piece_index]=p_solution.slots[location_index]
 
     if not(params["id_only"]):
-        out = pieces.mass_set("slot", piece_locations)
+        pieces.mass_set("slot", piece_locations)
+        out = pieces
     else:
         out = (list(zip(pieces.mass_get("id"), piece_locations)))
 

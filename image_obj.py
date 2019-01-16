@@ -136,8 +136,9 @@ class PieceCollection:
             piece.array = distort(piece.array, delta, mode)
         return self
 
-    def average_shape(self):
-        shapes=list(map(lambda x: x.shape[0:2], self.mass_get("plotted")))
+    def average_shape(self, type="image"):
+        "Type should be 'plotted' or 'image'."
+        shapes=list(map(lambda x: x.shape[0:2], self.mass_get(type)))
         shapes=reduce(lambda x, y:(x[0]+y[0], x[1]+y[1]), shapes)
         return (shapes[0]/len(self), shapes[1]/len(self))
 

@@ -6,6 +6,7 @@ import cv2
 import os
 from pathlib import Path
 from datetime import datetime
+from image_obj import PieceCollection, Solution
 
 class Solvent(object):
 
@@ -38,34 +39,34 @@ class Solvent(object):
     def solve_one(self, scrambled, solution_im):
         open
 
-    def detect(self, image, threshold, base_k, inc_k, sigma, *args, **kwargs):
-        detector = PieceFinder(threshold)
+    def detect(self, image, threshold = 0.6, base_k=150, inc_k=150, sigma=0.8, *args, **kwargs):
+        detector = PieceFinder(threshold = threshold)
         boxes, scores = detector.find_boxes(image, base_k, inc_k, sigma)
-        subimages=list(map(lambda box: image.get_subimage(box), boxes))
+        subimages=list(map(lambda box: get_subarray(image, box), boxes))
         collection = PieceCollection(subimages)
         return collection
 
     def solve(self, collection, ref_path, pooling=5, *args, **kwargs):
-        ref = openimg(path)
-        dims = find_dims(collection.average_shape(), len(collection), ref.shape[0:2])
+        ref = openimg(ref_path)
+        dims = find_dims(collection.average_shape(type="image"), len(collection), ref.shape[0:2])
         collection.dims=dims
         collection, score = full_solve(collection, Solution(ref, dims),
-                            pooling=pooling, debug_mode=False, iterator_mode=False,
-                            id_only=False, method="genalg", score=True)
+                            pooling=pooling, debug_mode=True, iterator_mode=False,
+                            id_only=False, method="genalg(xcorr)", score=True)
         return (collection, score)
 
     def assemble(self, collection, *args, **kwargs):
         excess = 1.1
         avg_shape = collection.average_shape()
         dims = collection.dims
-        final_dims = (int(avg_shape[0]*dims[1]*excess), int(avg_shape[1]*dims[0]*excess))
+        final_dims = (round(avg_shape[0]*dims[1]*excess), round(avg_shape[1]*dims[0]*excess))
 
-        image = np.ones(final_dims, dtype = np.uint8) * 255
-        locations = location_grid(avg_shape, dims, final_dims//2)
-
-        for piece in collection.pieces:
-            image[locations[piece.location][1]:avg_shape[0],
-                  locations[piece.location][0]:avg_shape[1]] = piece.array
+        image = np.ones((final_dims[0], final_dims[1], 3), dtype = np.uint8) * 255
+        locations = location_grid(avg_shape, dims, (final_dims[1]//2, final_dims[0]//2), reference="NW")
+        for piece in collection.get():
+            array = piece.array
+            image[locations[piece.slot][1]:locations[piece.slot][1]+array.shape[0],
+                  locations[piece.slot][0]:locations[piece.slot][0]+array.shape[1]] = array
 
         return image
 
@@ -74,9 +75,10 @@ class Solvent(object):
         if not(out_dir.is_dir()):
             os.mkdir(out_dir)
 
-        if log_path is none:
+        if log_path is None:
             log_path = out_dir / "log.txt"
         headers = ["Scrambled_path", "Reference_path", "Total_score"] + list(constants.keys())
+        appendable = list(constants.items())
         log = Logger(log_path, headers)
         start = datetime.now()
         for scrambled in self.backlog:
@@ -88,22 +90,27 @@ class Solvent(object):
 
                 scrambled_image = openimg(str(scrambled))
                 reference_image = openimg(str(self.backlog[scrambled]))
-                collection = self.detect(scrambled_image, eyyyy)
-                collection, score = self.solve(collection, self.backlog["scrambled"], *args, **kwargs)
+                collection = self.detect(scrambled_image, *args, **kwargs)
+                collection, score = self.solve(collection, self.backlog[scrambled], *args, **kwargs)
                 out = self.assemble(collection, *args, **kwargs)
-                log_dict = {"Scrambled_path": str(scrambled),
-                            "Reference_path": str(self.backlog[scrambled]),
-                            "Total_score": score} + constants
-                log.push_line()
-                del(self.backlock[scrambled])
+                log_dict = dict([("Scrambled_path", str(scrambled)),
+                            ("Reference_path", str(self.backlog[scrambled])),
+                            ("Total_score", score)] + appendable)
+                #log.push_line(log_dict)
+
                 out_path = out_dir /  scrambled.name
+                print(out_path)
                 if str(out_path)==str(scrambled):
                     raise ValueError("Input file must be different from output directory: "+str(out_path))
                 writeimg(out_path, out)
-                time=start-datetime.now()
-                print(time, scrambled)
-            except E:
-                print(scrambled, ": ", E)
+                time=datetime.now()-start
+
+                print(scrambled,time)
+
+            except Exception as E:
+                #print(scrambled, ": ", E)
+                raise E
+        self.backlog={}
         log.close()
 
 class Logger(object):
@@ -118,14 +125,14 @@ class Logger(object):
             for header in headers:
                 self.f.write("{!s} ".format(header))
                 self.headers.append(header)
-        except E:
+        except Exception as E:
             print(E)
 
     def push_line(self, value_dict):
         try:
             for header in self.headers:
                 self.f.write("{!s} ".format(value_dict[header]))
-        except E:
+        except Exception as E:
             print(E)
 
     def close(self):

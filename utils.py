@@ -91,10 +91,10 @@ def openimg(filepath):
         return np.concatenate((r,g,b), axis=2)
 
     try:
-        mypath=Path(filepath)
-        if not(mypath.is_file()):
+        filepath=Path(filepath)
+        if not(filepath.is_file()):
             raise IOError("That file doesn't exist!")
-        return bgr_to_rgb(cv2.imread(filepath, 1))
+        return bgr_to_rgb(cv2.imread(str(filepath), 1))
     except IOError as e:
         print(e)
 
@@ -104,10 +104,10 @@ def writeimg(path, image):
         r,g,b=np.split(image, 3, axis=2)
         return np.concatenate((b,g,r), axis=2)
     try:
-        if not(isinstance(image, np.adarray) and len(image.shape)==4): raise TypeError("File is illegible as image!")
+        if not(isinstance(image, np.ndarray) and len(image.shape)==3): raise TypeError("File is illegible as image!")
         cv2.imwrite(str(Path(path)), rgb_to_bgr(image))
-    except TypeError as e:
-        print(e)
+    except TypeError as E:
+        raise(E)
 
 def resize(images, ratio):
     if not(isinstance(images, list)):
@@ -159,17 +159,19 @@ def find_plot_locations(shape, dims, center=(400,300), reference="center"):
         full_size=np.array((shape[1]*dims[1], shape[0]*dims[0]))
         centers=np.array([(x*shape[1], y*shape[0]) for y in range(dims[0]) for x in range(dims[1])])
         centers+=np.array(center)-full_size//2+(shape[1]//2,shape[0]//2)
-        return centers
+        return np.array(np.round(centers), dtype=np.int32)
     if reference=="NW":
         full_size=np.array((shape[1]*dims[1], shape[0]*dims[0]))
         corners=np.array([(x*shape[1], y*shape[0]) for y in range(dims[0]) for x in range(dims[1])])
         corners+=np.array(center)-full_size//2
-        return corners
+        return np.array(np.round(corners), dtype=np.int32)
 
     else: raise NotImplementedError()
 
-def location_grid(shape, dims, center, reference="center"):
-    locations=find_plot_locations(shape, dims, center=(400,300), reference=reference)
+def location_grid(shape, dims, center=(400,300), reference="center"):
+    """Receives shapes and dims in array notation (H,W), center in pixel notation,
+        returns centers in pixel notation (W,H), (X,Y). Return format is a (dim[0],dims[1])-shaped array"""
+    locations=find_plot_locations(shape, dims, center=center, reference=reference)
     locations=np.array(locations)
     return np.reshape(locations, (dims[0], dims[1], 2))
 

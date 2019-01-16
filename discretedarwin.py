@@ -37,6 +37,10 @@ class Permutation(object):
     def mutate(self):
         raise NotImplementedError()
 
+    def __iter__(self):
+        for gene in self.objects:
+            yield gene
+
 
 class PositionPerm(Permutation):
 
@@ -86,7 +90,6 @@ class PositionPerm(Permutation):
         for pos in range(len(self.objects)):
             new_perm.rand_single_mutate(pos, mutate_p)
         return new_perm
-
 
 
 class Generation(list):
@@ -189,7 +192,7 @@ class DiscreteDarwin(object):
     def run(self, generations):
         for _ in range(generations):
             self.advance()
-            print(self.best().fitness)
+            #print(self.best().fitness)
         return self.gen.best(1)[0]
 
     def best(self):
