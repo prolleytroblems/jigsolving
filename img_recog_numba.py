@@ -8,7 +8,7 @@ from discretedarwin import DiscreteDarwin
 from pooling import *
 
 
-DEFAULTS={"debug_mode":False, "threshold":None, "iterator_mode":False, "method":"xcorr", "id_only":True}
+DEFAULTS={"debug_mode":False, "threshold":None, "iterator_mode":False, "method":"xcorr", "id_only":True, "score":False}
 
 @cuda.jit(device=True)
 def compare_pixel(pixela, pixelb):
@@ -303,9 +303,8 @@ def full_solve(pieces, solution, pooling=None, **params):
         if not(params["iterator_mode"]):
             if not(params["id_only"]):
                 solved=locate_pieces(pieces, solution, pooling=pooling, **params)
-                solved=PieceCollection(solved, find_dims())
+                solved=PieceCollection(solved, pieces.dims)
             else:
-                print(len(pieces), solution, pooling, params)
                 solved=locate_pieces(pieces, solution, pooling=pooling, **params)
         else:
             raise NotImplementedError("iterator solve not properly implemented")
@@ -318,6 +317,8 @@ def full_solve(pieces, solution, pooling=None, **params):
             print("Iterator mode: False")
         print("Solving: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
 
+    if params["score"]:
+        raise NotImplementedError()
     return solved
 
 def sort_pieces(located_pieces, dims):
@@ -357,7 +358,7 @@ def genalg_solve(pieces, solution, pooling=None, **params):
 
     #valuearray, partial_solution = reduce_search(valuearray)
 
-    optimizer = DiscreteDarwin(valuearray, 100, valuearray.shape[0] )
+    optimizer = DiscreteDarwin(valuearray, 100, valuearray.shape[0])
     optimizer.run(200)
     permutation=optimizer.best()
 
@@ -367,18 +368,19 @@ def genalg_solve(pieces, solution, pooling=None, **params):
     except StopIteration:
         pass
 
-    print(permutation)
-
     piece_locations=[-1]*len(pieces)
     for location_index, piece_index in enumerate(permutation.objects):
         piece_locations[piece_index]=p_solution.slots[location_index]
 
     if not(params["id_only"]):
-        pieces.mass_set("slot", piece_locations)
-        return pieces
+        out = pieces.mass_set("slot", piece_locations)
     else:
-        return(list(zip(pieces.mass_get("id"), piece_locations)))
+        out = (list(zip(pieces.mass_get("id"), piece_locations)))
 
+    if params["score"]:
+        score = permutation.fitness
+        return (out, score)
+    return out
 
 def main():
     pass

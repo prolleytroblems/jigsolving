@@ -98,14 +98,14 @@ def openimg(filepath):
     except IOError as e:
         print(e)
 
-def writeimg(name, image):
+def writeimg(path, image):
     """Wrapper for cv2.imwrite to correct channel order."""
     def rgb_to_bgr(image):
         r,g,b=np.split(image, 3, axis=2)
         return np.concatenate((b,g,r), axis=2)
     try:
         if not(isinstance(image, np.adarray) and len(image.shape)==4): raise TypeError("File is illegible as image!")
-        cv2.imwrite(name, rgb_to_bgr(image))
+        cv2.imwrite(str(Path(path)), rgb_to_bgr(image))
     except TypeError as e:
         print(e)
 
@@ -160,11 +160,16 @@ def find_plot_locations(shape, dims, center=(400,300), reference="center"):
         centers=np.array([(x*shape[1], y*shape[0]) for y in range(dims[0]) for x in range(dims[1])])
         centers+=np.array(center)-full_size//2+(shape[1]//2,shape[0]//2)
         return centers
+    if reference=="NW":
+        full_size=np.array((shape[1]*dims[1], shape[0]*dims[0]))
+        corners=np.array([(x*shape[1], y*shape[0]) for y in range(dims[0]) for x in range(dims[1])])
+        corners+=np.array(center)-full_size//2
+        return corners
 
     else: raise NotImplementedError()
 
 def location_grid(shape, dims, center, reference="center"):
-    locations=find_plot_locations(shape, dims, center=(400,300), reference="center")
+    locations=find_plot_locations(shape, dims, center=(400,300), reference=reference)
     locations=np.array(locations)
     return np.reshape(locations, (dims[0], dims[1], 2))
 
@@ -200,7 +205,7 @@ def find_dims(piece_shape, piece_count, full_shape):
     out = tuple(np.array(potential_dims[index, 0:2], dtype=np.uint8).tolist())
     return out
 
-def reassemble(pieces, dims):
+def exact_reassemble(pieces, dims):
     """Reassembles ordered piece images into a full image"""
     assert dims[0]*dims[1]==len(pieces)
     pieces=np.array(pieces)
