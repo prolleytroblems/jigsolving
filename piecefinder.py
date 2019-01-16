@@ -21,13 +21,10 @@ class PieceFinder(object):
         start=datetime.now()
         self.ss.setBaseImage(array)
         self.ss.switchToSelectiveSearchFast(base_k ,inc_k , sigma)
-        if kwargs["debug_mode"]:
-            print("Setup: " + str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms" )
-        start=datetime.now()
         boxes=self.ss.process()
         if kwargs["debug_mode"]:
-            print("Received ", len(boxes), " proposals.")
             print("Process:  " + str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms" )
+            print("Received ", len(boxes), " proposals.")
         start=datetime.now()
         boxes, scores=self.filter(array, boxes)
         if kwargs["debug_mode"]:

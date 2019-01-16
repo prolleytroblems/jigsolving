@@ -8,6 +8,8 @@ from pathlib import Path
 from datetime import datetime
 from image_obj import PieceCollection, Solution
 
+DEFAULTS = {"debug_mode":True}
+
 class Solvent(object):
 
     def __init__(self):
@@ -39,7 +41,7 @@ class Solvent(object):
     def solve_one(self, scrambled, solution_im):
         open
 
-    def detect(self, image, threshold = 0.6, base_k=150, inc_k=150, sigma=0.8, *args, **kwargs):
+    def detect(self, image, threshold=0.6, base_k=150, inc_k=150, sigma=0.8, *args, **kwargs):
         detector = PieceFinder(threshold = threshold)
         boxes, scores = detector.find_boxes(image, base_k, inc_k, sigma)
         subimages=list(map(lambda box: get_subarray(image, box), boxes))
@@ -50,10 +52,31 @@ class Solvent(object):
         ref = openimg(ref_path)
         dims = find_dims(collection.average_shape(type="image"), len(collection), ref.shape[0:2])
         collection.dims=dims
-        collection, score = full_solve(collection, Solution(ref, dims),
-                            pooling=pooling, debug_mode=True, iterator_mode=False,
-                            id_only=False, method="genalg(xcorr)", score=True)
+        genpar={"generations":400, "mutate_p":0.04, "cross_p":0.13, "elitism":0.05, "selection":"tournament", "score":True}
+        params=dict(pooling=pooling, debug_mode=True, iterator_mode=False,
+                    id_only=False, method="genalg(xcorr)", genalg_params=genpar)
+        collection, score = full_solve(collection, Solution(ref, dims), **params)
         return (collection, score)
+
+    def load_dir(self, scrambled_dir, ref_dir, extension=".jpg", **kwargs):
+        kwargs=param_check(kwargs, DEFAULTS)
+        scrambled_dir=Path(scrambled_dir)
+        ref_dir=Path(ref_dir)
+        if not(scrambled_dir.exists()):
+            raise ValueError("Directory does not exist! {!s}".format(scrambled_dir))
+        if not(ref_dir.exists()):
+            raise ValueError("Directory does not exist! ".format(ref_dir))
+        for file in scrambled_dir.glob("*"+extension):
+            try:
+                if (ref_dir / file.name).exists():
+                    self.backlog[file]=ref_dir / file.name
+                else:
+                    raise ValueError("Reference for {!s} does not exist.".format(file))
+                if kwargs["debug_mode"]:
+                    print("Added %s"%file.name)
+            except ValueError as E:
+                print(E)
+
 
     def assemble(self, collection, *args, **kwargs):
         excess = 1.1
@@ -71,6 +94,7 @@ class Solvent(object):
         return image
 
     def solve_loaded(self, out_dir, log_path=None, categories=[], constants={}, *args, **kwargs):
+        kwargs = param_check(kwargs, DEFAULTS)
         out_dir = Path(out_dir)
         if not(out_dir.is_dir()):
             os.mkdir(out_dir)
@@ -105,7 +129,8 @@ class Solvent(object):
                 writeimg(out_path, out)
                 time=datetime.now()-start
 
-                print(scrambled,time)
+                if kwargs["debug_mode"]:
+                    print("Finished {!s}, score {:3.4}, time {}".format(scrambled,score,time))
 
             except Exception as E:
                 #print(scrambled, ": ", E)

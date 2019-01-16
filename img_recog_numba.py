@@ -8,7 +8,8 @@ from discretedarwin import DiscreteDarwin
 from pooling import *
 
 
-DEFAULTS={"debug_mode":False, "threshold":None, "iterator_mode":False, "method":"xcorr", "id_only":True, "score":False}
+DEFAULTS={"debug_mode":False, "threshold":None, "iterator_mode":False,
+          "method":"xcorr", "id_only":True, "genalg_params":{}}
 
 @cuda.jit(device=True)
 def compare_pixel(pixela, pixelb):
@@ -348,7 +349,11 @@ def reduce_search(valuearray):
 
     return (new_valuearray, partial_solution)
 
+genalg_DEF={"generations":400, "mutate_p":0.04, "cross_p":0.13, "elitism":0.05, "selection":"tournament", "score":False, "population":100}
+
 def genalg_solve(pieces, solution, pooling=None, **params):
+    genalg_params = param_check(params["genalg_params"], genalg_DEF)
+
     p_pieces, p_solution = preprocess_pieces(pieces.mass_get("image"), solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
 
@@ -357,8 +362,10 @@ def genalg_solve(pieces, solution, pooling=None, **params):
 
     #valuearray, partial_solution = reduce_search(valuearray)
 
-    optimizer = DiscreteDarwin(valuearray, 100, valuearray.shape[0])
-    optimizer.run(200)
+    optimizer = DiscreteDarwin(valuearray, genalg_params["population"], valuearray.shape[0], **genalg_params)
+
+    print(genalg_params["generations"])
+    optimizer.run(genalg_params["generations"])
     permutation=optimizer.best()
 
     piece_locations=[-1]*len(pieces)
@@ -371,7 +378,7 @@ def genalg_solve(pieces, solution, pooling=None, **params):
     else:
         out = (list(zip(pieces.mass_get("id"), piece_locations)))
 
-    if params["score"]:
+    if genalg_params["score"]:
         score = permutation.fitness
         return (out, score)
     return out

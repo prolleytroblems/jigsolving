@@ -94,7 +94,7 @@ class PositionPerm(Permutation):
 
 class Generation(list):
 
-    def __init__(self, chromossomes=None, cross_p=0.13, mutate_p=0.04, elitism=0.05, selection="tournament"):
+    def __init__(self, chromossomes=None, cross_p=0.13, mutate_p=0.04, elitism=0.05, selection="tournament", **kwargs):
         self.params={"selection":selection,
                     "elitism":elitism,
                     "cross_p":cross_p,
