@@ -62,7 +62,7 @@ class BBoxFilter(object):
         self.threshold=threshold
         self.max_loss=max_loss
         self.max_tries=max_tries
-        self._min_threshold=0.5
+        self._min_threshold=0.4
 
     def __call__(self, array, boxes, ref_shape=None, **kwargs):
         start=datetime.now()
@@ -79,7 +79,6 @@ class BBoxFilter(object):
                 out_boxes, out_scores = self.threshold_filter(boxes, scores, threshold)
                 out_boxes, out_scores = self.IoA_filter(out_boxes, out_scores)
                 dims, loss = find_dims(self.average_shape(out_boxes), len(out_boxes), ref_shape)
-                print(len(out_boxes), loss)
                 if loss < self.max_loss:
                     break
 

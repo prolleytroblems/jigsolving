@@ -18,4 +18,4 @@ print(folders)
 for folder in folders:
     solver = Solvent()
     solver.load_dir(basepath / folder, basepath)
-    solver.solve_loaded(out_dir = basepath / ("out"+folder), pooling=1, generations=200, threshold =0.95)
+    solver.solve_loaded(out_dir = basepath / ("out"+folder), pooling=1, generations=200, threshold =0.8)

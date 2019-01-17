@@ -200,11 +200,9 @@ def find_dims(piece_shape, piece_count, full_shape):
     potential_dims=np.reshape(potential_dims, (potential_dims.shape[0]//2, 2))
     potential_dims=np.concatenate((potential_dims, np.zeros((potential_dims.shape[0], 1))), axis=1)
     sol_proportion = full_shape[1]/full_shape[0]
-    print("solp", full_shape)
     for pair in potential_dims:
         loss = (piece_shape[1]*pair[1]/(piece_shape[0]*pair[0])-sol_proportion)**2
         pair[2] = loss
-        print((piece_shape[0]*pair[0], piece_shape[1]*pair[1]), pair, piece_shape, loss)
     index =  np.argmin(potential_dims[:, 2])
     out = tuple(np.array(potential_dims[index, 0:2], dtype=np.uint8).tolist())
     loss = potential_dims[index, 2]

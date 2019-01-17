@@ -119,11 +119,18 @@ class Solvent(object):
                     scrambled_image = openimg(str(scrambled))
                     reference_image = openimg(str(self.backlog[scrambled]))
                     collection, dims = self.detect(scrambled_image, ref_shape=reference_image.shape[0:2], **kwargs)
+
+                    piece_count = len(collection)
+
+                    #wanted data: stdev of piece sizes,stdev of actual piece sizes,
+                    #avg piece size, actual avg piece size, color variation of original image, runtime error
+                    #type of distortion and amount, size of image
+
                     collection, score = self.solve(collection, reference_image, dims=dims, **kwargs)
                     out = self.assemble(collection, *args, **kwargs)
                     log_dict = dict([("Scrambled_path", str(scrambled)),
                                 ("Reference_path", str(self.backlog[scrambled])),
-                                ("Total_score", score)] + appendable)
+                                ("Total_score", score)] + appendable + data)
                     log.push_line(log_dict)
 
                     out_path = out_dir /  scrambled.name
@@ -153,7 +160,10 @@ class Logger(object):
 
     def push_line(self, value_dict):
         for header in self.headers:
-            self.f.write("{!s} ".format(value_dict[header]))
+            if header in value_dict:
+                self.f.write("{!s} ".format(value_dict[header]))
+            else:
+                self.f.write("N/A "
         self.f.write("\n")
 
     def open(self):
