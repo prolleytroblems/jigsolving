@@ -329,6 +329,7 @@ def sort_pieces(located_pieces, dims):
     return [piece for row in sorted_pieces for piece in row]
 
 def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
+    "Rows are reference locations, columns are pieces."
     valuearray=np.zeros((len(dpieces), len(dpieces)))
     for i in range(len(dsolution)):
         for j in range(len(dpieces)):
@@ -337,34 +338,31 @@ def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
     np.savetxt("valuearray.csv", valuearray)
     return valuearray
 
-def reduce_search(valuearray):
-    raise NotImplementedError()
-    exclusion_mask_rows=np.ones((valuearray.shape[0]), dtype=boolean)
-    exclusion_mask_cols=np.ones((valuearray.shape[0]), dtype=boolean)
+def simple_solve(valuearray):
+    used_mask = np.zeros((valuearray.shape[1]))
+    out = [None]*valuearray.shape[1]
     for i, row in enumerate(valuearray):
-        if np.argmax(valuearray[:, np.argmax(row)]) == i:
-            exclusion_mask[i] = False
-        else:
-            pass
+        out[i] = np.argmax(row+used_mask)
+        used_mask[out[i]] = -2
 
-    return (new_valuearray, partial_solution)
+    assert not(None in out)
+    return out
 
 genalg_DEF={"generations":400, "mutate_p":0.04, "cross_p":0.13, "elitism":0.05, "selection":"tournament", "score":False, "population":100}
 
 def genalg_solve(pieces, solution, pooling=None, **params):
     genalg_params = param_check(params["genalg_params"], genalg_DEF)
+    if params["debug_mode"]:
+        print("GA: "+str(genalg_params))
 
     p_pieces, p_solution = preprocess_pieces(pieces.mass_get("image"), solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
 
     dsolution = p_solution.darrays
     valuearray = get_valuearray(p_pieces, p_solution.arrays, dpieces, dsolution)
+    start = simple_solve(valuearray)
+    optimizer = DiscreteDarwin(valuearray, genalg_params["population"], valuearray.shape[0], start_loc=start, **genalg_params)
 
-    #valuearray, partial_solution = reduce_search(valuearray)
-
-    optimizer = DiscreteDarwin(valuearray, genalg_params["population"], valuearray.shape[0], **genalg_params)
-
-    print(genalg_params["generations"])
     optimizer.run(genalg_params["generations"])
     permutation=optimizer.best()
 

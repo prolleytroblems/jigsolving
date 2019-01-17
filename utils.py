@@ -201,11 +201,12 @@ def find_dims(piece_shape, piece_count, full_shape):
     potential_dims=np.concatenate((potential_dims, np.zeros((potential_dims.shape[0], 1))), axis=1)
     sol_proportion = full_shape[1]/full_shape[0]
     for pair in potential_dims:
-        score = (piece_shape[1]*pair[1]/(piece_shape[0]*pair[0])-sol_proportion)**2
-        pair[2] = score
+        loss = (piece_shape[1]*pair[1]/(piece_shape[0]*pair[0])-sol_proportion)**2
+        pair[2] = loss
     index =  np.argmin(potential_dims[:, 2])
     out = tuple(np.array(potential_dims[index, 0:2], dtype=np.uint8).tolist())
-    return out
+    loss = potential_dims[index, 2]
+    return out, score
 
 def exact_reassemble(pieces, dims):
     """Reassembles ordered piece images into a full image"""

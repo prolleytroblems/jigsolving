@@ -26,7 +26,13 @@ class PieceFinder(object):
             print("Process:  " + str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms" )
             print("Received ", len(boxes), " proposals.")
         start=datetime.now()
-        boxes, scores=self.filter(array, boxes)
+        if ref_shape:
+            for i in range(something):
+                boxes, scores=self.filter(array, boxes)
+                if check_dims(boxes, ref_shape, ) < target:
+                    break
+        else:
+            boxes, scores=self.filter(array, boxes)
         if kwargs["debug_mode"]:
             print("Filter: " + str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms" )
         return (boxes, scores)

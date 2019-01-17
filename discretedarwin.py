@@ -10,8 +10,8 @@ class Permutation(object):
     def __init__(self, objects, fitness_func, length=None):
         #position n has objects[n]
         if not(objects is -1):
-            if not(isinstance(objects, tuple)):
-                raise Exception("Permutation must be in the form of a tuple")
+            if not(isinstance(objects, list)):
+                raise Exception("Permutation must be in the form of a list")
             self.objects=objects
         else:
             self.random_init(length)
@@ -25,12 +25,6 @@ class Permutation(object):
         self.objects=list(range(length))
         random.shuffle(self.objects)
 
-    def __str__(self):
-        return str(self.objects)
-
-    def __repr__(self):
-        return repr(self.objects)
-
     def crossover(self, other):
         raise NotImplementedError()
 
@@ -41,12 +35,22 @@ class Permutation(object):
         for gene in self.objects:
             yield gene
 
+    def __str__(self):
+        return str(self.objects)
+
+    def __repr__(self):
+        return repr(self.objects)
+
+    def __len__(self):
+        return len(self.objects)
+
 
 class PositionPerm(Permutation):
 
     def __init__(self, objects, value_table, length=None):
         self.table=value_table
         super().__init__(objects, self.position_fitness, length)
+        assert len(objects)==len(set(objects))
 
     def position_fitness(self):
         score=0
@@ -181,15 +185,21 @@ class DiscreteDarwin(object):
         self.pop_size=pop_size
         self.initialize_pop( **kwargs)
 
-    def initialize_pop(self, **kwargs):
+    def initialize_pop(self, start_loc=None, **kwargs):
         self.gen=Generation(**kwargs)
-        for _ in range(self.pop_size):
-            self.gen.append(PositionPerm(-1, self.table, self.len))
+        if start_loc is None:
+            for _ in range(self.pop_size):
+                self.gen.append(PositionPerm(-1, self.table, self.len))
+        else:
+            mutate_p=1-0.05**(1/len(start_loc))
+            for _ in range(self.pop_size):
+                self.gen.append(PositionPerm(start_loc, self.table, self.len).rand_mutate(mutate_p))
 
     def advance(self):
         self.gen=self.gen.next_generation()
 
     def run(self, generations):
+        #print(self.table)
         for _ in range(generations):
             self.advance()
             #print(self.best().fitness)

@@ -41,7 +41,7 @@ class Piece(object):
 
 
 class PieceCollection:
-
+    
     def __init__(self, pieces_or_images, dims=None):
         if isinstance(pieces_or_images[0], np.ndarray):
             images=pieces_or_images

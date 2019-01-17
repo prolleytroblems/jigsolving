@@ -38,26 +38,6 @@ class Solvent(object):
             reference = solution_folder/name
             self.backlog[scrambled] = reference
 
-    def solve_one(self, scrambled, solution_im):
-        open
-
-    def detect(self, image, threshold=0.6, base_k=150, inc_k=150, sigma=0.8, *args, **kwargs):
-        detector = PieceFinder(threshold = threshold)
-        boxes, scores = detector.find_boxes(image, base_k, inc_k, sigma)
-        subimages=list(map(lambda box: get_subarray(image, box), boxes))
-        collection = PieceCollection(subimages)
-        return collection
-
-    def solve(self, collection, ref_path, pooling=5, *args, **kwargs):
-        ref = openimg(ref_path)
-        dims = find_dims(collection.average_shape(type="image"), len(collection), ref.shape[0:2])
-        collection.dims=dims
-        genpar={"generations":400, "mutate_p":0.04, "cross_p":0.13, "elitism":0.05, "selection":"tournament", "score":True}
-        params=dict(pooling=pooling, debug_mode=True, iterator_mode=False,
-                    id_only=False, method="genalg(xcorr)", genalg_params=genpar)
-        collection, score = full_solve(collection, Solution(ref, dims), **params)
-        return (collection, score)
-
     def load_dir(self, scrambled_dir, ref_dir, extension=".jpg", **kwargs):
         kwargs=param_check(kwargs, DEFAULTS)
         scrambled_dir=Path(scrambled_dir)
@@ -77,13 +57,31 @@ class Solvent(object):
             except ValueError as E:
                 print(E)
 
+    def detect(self, image, threshold=0.6, base_k=150, inc_k=150, sigma=0.8, *args, **kwargs):
+        detector = PieceFinder(threshold = threshold)
+        boxes, scores = detector.find_boxes(image, base_k, inc_k, sigma)
+        subimages=list(map(lambda box: get_subarray(image, box), boxes))
+        collection = PieceCollection(subimages)
+        return collection
+
+    def solve(self, collection, ref_path, pooling=5, *args, **kwargs):
+        ref = openimg(ref_path)
+        dims, loss = find_dims(collection.average_shape(type="image"), len(collection), ref.shape[0:2])
+        collection.dims=dims
+        genpar={"generations":400, "mutate_p":0.04, "cross_p":0.13, "elitism":0.05, "selection":"tournament", "score":True}
+        for key in genpar:
+            if key in kwargs:
+                genpar[key] = kwargs[key]
+        params=dict(pooling=pooling, debug_mode=True, iterator_mode=False,
+                    id_only=False, method="genalg(xcorr)", genalg_params=genpar)
+        collection, score = full_solve(collection, Solution(ref, dims), **params)
+        return (collection, score)
 
     def assemble(self, collection, *args, **kwargs):
         excess = 1.1
         avg_shape = collection.average_shape()
         dims = collection.dims
         final_dims = (round(avg_shape[0]*dims[1]*excess), round(avg_shape[1]*dims[0]*excess))
-
         image = np.ones((final_dims[0], final_dims[1], 3), dtype = np.uint8) * 255
         locations = location_grid(avg_shape, dims, (final_dims[1]//2, final_dims[0]//2), reference="NW")
         for piece in collection.get():
@@ -103,69 +101,67 @@ class Solvent(object):
             log_path = out_dir / "log.txt"
         headers = ["Scrambled_path", "Reference_path", "Total_score"] + list(constants.keys())
         appendable = list(constants.items())
-        log = Logger(log_path, headers)
-        start = datetime.now()
-        for scrambled in self.backlog:
-            try:
-                if not(scrambled.exists()):
-                    raise ValueError("Does not exist: %s"%scrambled)
-                if not(self.backlog[scrambled].exists()):
-                    raise ValueError("Does not exist: %s"%self.backlog[scrambled])
+        with Logger(log_path, headers) as log:
+            start = datetime.now()
+            for scrambled in self.backlog:
+                try:
+                    if not(scrambled.exists()):
+                        raise ValueError("Does not exist: %s"%scrambled)
+                    if not(self.backlog[scrambled].exists()):
+                        raise ValueError("Does not exist: %s"%self.backlog[scrambled])
 
-                scrambled_image = openimg(str(scrambled))
-                reference_image = openimg(str(self.backlog[scrambled]))
-                collection = self.detect(scrambled_image, *args, **kwargs)
-                collection, score = self.solve(collection, self.backlog[scrambled], *args, **kwargs)
-                out = self.assemble(collection, *args, **kwargs)
-                log_dict = dict([("Scrambled_path", str(scrambled)),
-                            ("Reference_path", str(self.backlog[scrambled])),
-                            ("Total_score", score)] + appendable)
-                #log.push_line(log_dict)
+                    scrambled_image = openimg(str(scrambled))
+                    reference_image = openimg(str(self.backlog[scrambled]))
+                    collection = self.detect(scrambled_image, *args, **kwargs)
+                    collection, score = self.solve(collection, self.backlog[scrambled], *args, **kwargs)
+                    out = self.assemble(collection, *args, **kwargs)
+                    log_dict = dict([("Scrambled_path", str(scrambled)),
+                                ("Reference_path", str(self.backlog[scrambled])),
+                                ("Total_score", score)] + appendable)
+                    log.push_line(log_dict)
 
-                out_path = out_dir /  scrambled.name
-                print(out_path)
-                if str(out_path)==str(scrambled):
-                    raise ValueError("Input file must be different from output directory: "+str(out_path))
-                writeimg(out_path, out)
-                time=datetime.now()-start
+                    out_path = out_dir /  scrambled.name
+                    print(out_path)
+                    if str(out_path)==str(scrambled):
+                        raise ValueError("Input file must be different from output directory: "+str(out_path))
+                    writeimg(out_path, out)
+                    time=datetime.now()-start
 
-                if kwargs["debug_mode"]:
-                    print("Finished {!s}, score {:3.4}, time {}".format(scrambled,score,time))
+                    if kwargs["debug_mode"]:
+                        print("Finished {!s}, score {:3.4}, time {}".format(scrambled,score,time))
 
-            except Exception as E:
-                #print(scrambled, ": ", E)
-                raise E
+                except ValueError as E:
+                    raise E
+                    print(scrambled, ": ", E)
+
         self.backlog={}
         log.close()
 
 class Logger(object):
 
     def __init__(self, path, headers):
-        try:
-            path=Path(path)
-            if not(path.suffix == ".txt"):
-                raise ValueError("Log file must be .txt: "+str(path))
-            self.f = open(str(path), "w")
-            self.headers = []
-            for header in headers:
-                self.f.write("{!s} ".format(header))
-                self.headers.append(header)
-        except Exception as E:
-            print(E)
+        self.path=Path(path)
+        if not(path.suffix == ".txt"):
+            raise ValueError("Log file must be .txt: "+str(path))
+        self.headers = headers
 
     def push_line(self, value_dict):
-        try:
-            for header in self.headers:
-                self.f.write("{!s} ".format(value_dict[header]))
-        except Exception as E:
-            print(E)
+        for header in self.headers:
+            self.f.write("{!s} ".format(value_dict[header]))
+        self.f.write("\n")
+
+    def open(self):
+        self.f = open(self.path, "w")
+        for header in self.headers:
+            self.f.write("{!s} ".format(header))
+        self.f.write("\n")
 
     def close(self):
         self.f.close()
-        del(self)
 
     def __enter__(self):
-        pass
+        self.open()
+        return self
 
-    def __exit__(self):
-        pass
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()

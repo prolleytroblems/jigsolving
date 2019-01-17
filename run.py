@@ -25,7 +25,8 @@ def distort(collection, delta, mode):
 
 def solve(path, collection, pooling=5, method="xcorr", **params):
     solutionimg=openimg(path)
-    dims = find_dims(collection.average_shape(), len(collection), solutionimg.shape[0:2])
+    dims, score = find_dims(collection.average_shape(), len(collection), solutionimg.shape[0:2])
+    print("Shape loss: ", loss)
     collection.dims=dims
 
     id_slots = full_solve(collection, Solution(solutionimg, dims),

@@ -164,7 +164,7 @@ class PuzzleCanvas(Canvas):
 
     def update(self, id_slots):
         slots=list(map(lambda x: x[1], id_slots))
-        shape=self.collection.average_shape()
+        shape=self.collection.average_shape(type="plotted")
         dims=self.collection.dims
 
         locations = location_grid(shape, dims, (self.size[0]//2, self.size[1]//2))

@@ -1,6 +1,21 @@
 from solvent import Solvent
+from pathlib import Path
 
 solver = Solvent()
-puzzle={"./images/samples/sunset.jpg": "./images/sunset.jpg"}
-solver.load_dir("./images/samples/", "./images/")
-solver.solve_loaded(out_dir = "./images/out/")
+puzzle={"./tests/blur-1/000d3e755ce7542c.jpg": "./tests/000d3e755ce7542c.jpg"}
+solver.load_puzzles(puzzle)
+solver.solve_loaded(out_dir = "./tests/test/", pooling=5, generations=400)
+
+
+"""
+folders = []
+folders += ["blur-"+str(i) for i in [1,2,3,4]]
+folders += ["brightness-"+str(i) for i in [25,50,75,100]]
+folders += ["gaussian-"+str(i) for i in [5,10,15,20]]
+folders += ["motion-"+str(i) for i in [5,9,13,17]]
+basepath=Path("./tests/")
+print(folders)
+for folder in folders:
+    solver = Solvent()
+    solver.load_dir(basepath / folder, basepath)
+    solver.solve_loaded(out_dir = basepath / ("out"+folder), pooling=5, generations=200)"""
