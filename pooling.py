@@ -33,7 +33,7 @@ def pool(images_or_solution, pooling, stride, **params):
 
     else: raise TypeError("images_or_solution must be an ndarray or Solution instance")
 
-def pool_image(image, pooling, stride, pool_method="max", **params):
+def pool_image(image, pooling, stride, pool_method="avg", **params):
     """Apply pooling to a single image. \n
         image    ndarray \n
         pooling  tuple of int of len=2 \n

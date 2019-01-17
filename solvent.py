@@ -57,38 +57,44 @@ class Solvent(object):
             except ValueError as E:
                 print(E)
 
-    def detect(self, image, threshold=0.6, base_k=150, inc_k=150, sigma=0.8, *args, **kwargs):
-        detector = PieceFinder(threshold = threshold)
-        boxes, scores = detector.find_boxes(image, base_k, inc_k, sigma)
-        subimages=list(map(lambda box: get_subarray(image, box), boxes))
+    def detect(self, image, threshold=0.8, base_k=150, inc_k=150, sigma=0.8, ref_shape=None, *args, **kwargs):
+        detector = PieceFinder(threshold = threshold, max_loss=0.05, max_tries=10)
+        boxes, scores, dims = detector.find_boxes(image, base_k, inc_k, sigma, ref_shape=ref_shape)
+        subimages = list(map(lambda box: get_subarray(image, box), boxes))
         collection = PieceCollection(subimages)
-        return collection
+        return collection, dims
 
-    def solve(self, collection, ref_path, pooling=5, *args, **kwargs):
-        ref = openimg(ref_path)
-        dims, loss = find_dims(collection.average_shape(type="image"), len(collection), ref.shape[0:2])
+    def solve(self, collection, ref_image, dims=None, pooling=5, *args, **kwargs):
+        if dims is None:
+            dims, loss = find_dims(collection.average_shape(type="image"), len(collection), ref_image.shape[0:2])
         collection.dims=dims
-        genpar={"generations":400, "mutate_p":0.04, "cross_p":0.13, "elitism":0.05, "selection":"tournament", "score":True}
+        genpar={"generations":400, "mutate_p":0.09, "cross_p":0.13, "elitism":0.05, "selection":"tournament", "score":True}
         for key in genpar:
             if key in kwargs:
                 genpar[key] = kwargs[key]
         params=dict(pooling=pooling, debug_mode=True, iterator_mode=False,
                     id_only=False, method="genalg(xcorr)", genalg_params=genpar)
-        collection, score = full_solve(collection, Solution(ref, dims), **params)
+        collection, score = full_solve(collection, Solution(ref_image, dims), **params)
         return (collection, score)
 
     def assemble(self, collection, *args, **kwargs):
         excess = 1.1
         avg_shape = collection.average_shape()
         dims = collection.dims
-        final_dims = (round(avg_shape[0]*dims[1]*excess), round(avg_shape[1]*dims[0]*excess))
+        final_dims = (round(avg_shape[0]*dims[0]*excess), round(avg_shape[1]*dims[1]*excess))
         image = np.ones((final_dims[0], final_dims[1], 3), dtype = np.uint8) * 255
         locations = location_grid(avg_shape, dims, (final_dims[1]//2, final_dims[0]//2), reference="NW")
-        for piece in collection.get():
-            array = piece.array
-            image[locations[piece.slot][1]:locations[piece.slot][1]+array.shape[0],
-                  locations[piece.slot][0]:locations[piece.slot][0]+array.shape[1]] = array
-
+        try:
+            for piece in collection.get():
+                array = piece.array
+                image[locations[piece.slot][1]:locations[piece.slot][1]+array.shape[0],
+                      locations[piece.slot][0]:locations[piece.slot][0]+array.shape[1]] = array
+        except ValueError as E:
+            """print("dims", dims)
+            print("avg_shape", avg_shape)
+            print("final_dims", image.shape)
+            print("array shape", array.shape)"""
+            raise E
         return image
 
     def solve_loaded(self, out_dir, log_path=None, categories=[], constants={}, *args, **kwargs):
@@ -112,8 +118,8 @@ class Solvent(object):
 
                     scrambled_image = openimg(str(scrambled))
                     reference_image = openimg(str(self.backlog[scrambled]))
-                    collection = self.detect(scrambled_image, *args, **kwargs)
-                    collection, score = self.solve(collection, self.backlog[scrambled], *args, **kwargs)
+                    collection, dims = self.detect(scrambled_image, ref_shape=reference_image.shape[0:2], **kwargs)
+                    collection, score = self.solve(collection, reference_image, dims=dims, **kwargs)
                     out = self.assemble(collection, *args, **kwargs)
                     log_dict = dict([("Scrambled_path", str(scrambled)),
                                 ("Reference_path", str(self.backlog[scrambled])),
@@ -130,7 +136,7 @@ class Solvent(object):
                     if kwargs["debug_mode"]:
                         print("Finished {!s}, score {:3.4}, time {}".format(scrambled,score,time))
 
-                except ValueError as E:
+                except Exception as E:
                     raise E
                     print(scrambled, ": ", E)
 

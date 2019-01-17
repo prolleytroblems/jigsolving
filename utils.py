@@ -194,19 +194,21 @@ def get_divisors(number):
     return divisors
 
 def find_dims(piece_shape, piece_count, full_shape):
-    """Piece shapes in array notation (W, H), returns dim values in array notation (rows, columns)"""
+    """Piece and reference shapes in array notation (H, W), returns dim values in array notation (rows, columns)"""
     assert isinstance(piece_count, int)
     potential_dims=np.array(get_divisors(piece_count))
     potential_dims=np.reshape(potential_dims, (potential_dims.shape[0]//2, 2))
     potential_dims=np.concatenate((potential_dims, np.zeros((potential_dims.shape[0], 1))), axis=1)
     sol_proportion = full_shape[1]/full_shape[0]
+    print("solp", full_shape)
     for pair in potential_dims:
         loss = (piece_shape[1]*pair[1]/(piece_shape[0]*pair[0])-sol_proportion)**2
         pair[2] = loss
+        print((piece_shape[0]*pair[0], piece_shape[1]*pair[1]), pair, piece_shape, loss)
     index =  np.argmin(potential_dims[:, 2])
     out = tuple(np.array(potential_dims[index, 0:2], dtype=np.uint8).tolist())
     loss = potential_dims[index, 2]
-    return out, score
+    return out, loss
 
 def exact_reassemble(pieces, dims):
     """Reassembles ordered piece images into a full image"""
@@ -216,3 +218,6 @@ def exact_reassemble(pieces, dims):
     if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple")
     image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
     return image
+
+def mili_seconds(dt_delta):
+    return str(dt_delta.seconds*1000+float(dt_delta.microseconds)/1000)+" ms"

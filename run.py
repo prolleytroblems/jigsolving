@@ -25,7 +25,7 @@ def distort(collection, delta, mode):
 
 def solve(path, collection, pooling=5, method="xcorr", **params):
     solutionimg=openimg(path)
-    dims, score = find_dims(collection.average_shape(), len(collection), solutionimg.shape[0:2])
+    dims, loss = find_dims(collection.average_shape(), len(collection), solutionimg.shape[0:2])
     print("Shape loss: ", loss)
     collection.dims=dims
 
@@ -44,10 +44,10 @@ def show(path):
     cv2.imshow("Solution image", image)
     cv2.waitKey(1)
 
-genner=ImageSplitter()
-genner.gen(Path("./images/puzzle.jpg"), Path("./images/samples/"), dims=dims, min =-1)
+"""genner=ImageSplitter()
+genner.gen(Path("./tests/puzzle.jpg"), Path("./tests/samples/"), dims=dims, min =-1)
 genner.close()
-
+"""
 #functions={"shuffle":split_shuffle, "solve":solve, "open":open, "distort":distort}
 functions={"detect":detect, "solve":solve, "open":open, "distort":distort, "show":show}
 

@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 from datetime import datetime
 from IoU import IoA
-from utils import reflect, get_subarray, param_check
+from utils import reflect, get_subarray, param_check, mili_seconds, find_dims
 
-DEFAULTS = {"debug_mode":True}
+DEFAULTS = {"debug_mode":True, "ref_shape":None}
 
 class PieceFinder(object):
     def __init__(self, **kwargs):
@@ -13,7 +13,7 @@ class PieceFinder(object):
         self.ss = cv2.ximgproc.segmentation.createSelectiveSearchSegmentation()
         self.filter=BBoxFilter(**kwargs)
 
-    def find_boxes(self, array, base_k=150 ,inc_k=150 , sigma=0.8, *args, **kwargs):
+    def find_boxes(self, array, base_k=150 ,inc_k=150, sigma=0.8, **kwargs):
         params=param_check(kwargs, DEFAULTS)
         if kwargs["debug_mode"]:
             print("-----Piece detector-----")
@@ -23,19 +23,12 @@ class PieceFinder(object):
         self.ss.switchToSelectiveSearchFast(base_k ,inc_k , sigma)
         boxes=self.ss.process()
         if kwargs["debug_mode"]:
-            print("Process:  " + str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms" )
+            print("Process: base_k={}, inc_k={}, sigma={}, {}".format(base_k , inc_k, sigma, mili_seconds(datetime.now()-start)))
             print("Received ", len(boxes), " proposals.")
-        start=datetime.now()
-        if ref_shape:
-            for i in range(something):
-                boxes, scores=self.filter(array, boxes)
-                if check_dims(boxes, ref_shape, ) < target:
-                    break
-        else:
-            boxes, scores=self.filter(array, boxes)
-        if kwargs["debug_mode"]:
-            print("Filter: " + str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms" )
-        return (boxes, scores)
+
+        out = self.filter(array, boxes, **kwargs)
+
+        return out
 
     def get_boxes(self, path, check_dims=False, iter=1, **kwargs):
         if iter>n:
@@ -55,32 +48,63 @@ class PieceFinder(object):
         else:
             return box_list
 
-    def check_dims(self, box_list, full_shape):
-        pass
-
-
 class BBoxFilter(object):
 
     def __init__(self, edgewidth=1, **kwargs):
         self.width=edgewidth
         self.configure(**kwargs)
 
-    def configure(self, expansion=2, borderwidth=4, border_to_grad=0.4, threshold=0.6
-    , **kwargs):
+    def configure(self, expansion=2, borderwidth=4, border_to_grad=0.4, threshold=0.6,
+                        max_loss=None, max_tries=10, **kwargs):
         self.expansion=expansion
         self.borderwidth=borderwidth
         self.weights=(border_to_grad, 1-border_to_grad)
         self.threshold=threshold
+        self.max_loss=max_loss
+        self.max_tries=max_tries
+        self._min_threshold=0.5
 
-    def __call__(self, array, boxes):
+    def __call__(self, array, boxes, ref_shape=None, **kwargs):
+        start=datetime.now()
+
         subarrays=list(map(lambda box: get_subarray(array, box, self.expansion), boxes))
         scores=np.array(list(map(lambda subarray: self.score_array(subarray,
                                             thiccness=self.borderwidth), subarrays)))[...,None]
         del(subarrays)
 
-        boxes, scores = self.threshold_filter(boxes, scores, self.threshold)
+        if not(self.max_loss is None):
+            threshold = self.threshold
+            step = abs(threshold-self._min_threshold)/self.max_tries
+            for _ in range(self.max_tries):
+                out_boxes, out_scores = self.threshold_filter(boxes, scores, threshold)
+                out_boxes, out_scores = self.IoA_filter(out_boxes, out_scores)
+                dims, loss = find_dims(self.average_shape(out_boxes), len(out_boxes), ref_shape)
+                print(len(out_boxes), loss)
+                if loss < self.max_loss:
+                    break
 
-        return self.IoA_filter(boxes, scores)
+                else:
+                    threshold-=step
+                    if threshold < self._min_threshold:
+                        break
+            if loss>self.max_loss:
+                raise RuntimeWarning("Failed to find adequate boxes.")
+            out=(out_boxes, out_scores, dims)
+        else:
+            threshold = self.threshold
+            boxes, scores = self.threshold_filter(boxes, scores, threshold)
+            out = self.IoA_filter(boxes, scores)
+
+
+        if kwargs["debug_mode"]:
+            if not(self.max_loss is None):
+                print("Filter: threshold = {:5.3}, loss = {:5.3}, {}".format(threshold, loss, mili_seconds(datetime.now()-start)))
+            else:
+                print("Filter: threshold = {:5.3}, {}".format(threshold, mili_seconds(datetime.now()-start)))
+        return out
+
+    def average_shape(self, box_list):
+        return np.average(np.array(box_list[:,(3,2)]), axis=0)
 
     def IoA_filter(self, boxes, scores, threshold=0.3):
         """Boxes have 4 parameters: (x0, y0, w, h)"""

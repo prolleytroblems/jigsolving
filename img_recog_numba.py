@@ -331,6 +331,13 @@ def sort_pieces(located_pieces, dims):
 def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
     "Rows are reference locations, columns are pieces."
     valuearray=np.zeros((len(dpieces), len(dpieces)))
+    """for i in range(5):
+        cv2.imshow("", pieces[i])
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        cv2.imshow("", solutionpieces[i])
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()"""
     for i in range(len(dsolution)):
         for j in range(len(dpieces)):
             #valuearray[i, j] = compare(dsolution[i], dpieces[j], decoding="sort", **params)**2

@@ -192,6 +192,7 @@ class DiscreteDarwin(object):
                 self.gen.append(PositionPerm(-1, self.table, self.len))
         else:
             mutate_p=1-0.05**(1/len(start_loc))
+            print("mutate_p",mutate_p)
             for _ in range(self.pop_size):
                 self.gen.append(PositionPerm(start_loc, self.table, self.len).rand_mutate(mutate_p))
 
@@ -202,7 +203,8 @@ class DiscreteDarwin(object):
         #print(self.table)
         for _ in range(generations):
             self.advance()
-            #print(self.best().fitness)
+            """if _%10==0:
+                print(self.best().fitness)"""
         return self.gen.best(1)[0]
 
     def best(self):

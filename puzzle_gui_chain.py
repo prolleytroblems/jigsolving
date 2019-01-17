@@ -102,7 +102,7 @@ class GUI(Tk):
 
         self.pathentry=ttk.Entry(openframe)
         self.pathentry.grid(column=1, row=0, pady=2, padx=5, sticky=(W,E))
-        self.pathentry.insert(0,"images/samples/puzzle.jpg")
+        self.pathentry.insert(0,"tests/blur-1/puzzle.jpg")
 
         solpathlabel=ttk.Label(openframe)
         solpathlabel.configure(text="Sol. path:")
@@ -110,7 +110,7 @@ class GUI(Tk):
 
         self.solpathentry=ttk.Entry(openframe)
         self.solpathentry.grid(column=1, row=1, pady=2, padx=5, sticky=(W,E))
-        self.solpathentry.insert(0,"images/puzzle.jpg")
+        self.solpathentry.insert(0,"tests/puzzle.jpg")
 
         self.openbutton=ttk.Button(openframe, text="Open", width=20)
         self.openbutton.configure(command=lambda: functions["open"](self.pathentry.get(), self.solpathentry.get()))
@@ -165,7 +165,7 @@ class GUI(Tk):
         poolvar=StringVar()
         poolspin=Spinbox(solveframe, from_=1, to=10, textvariable=poolvar, width=6)
         poolspin.grid(column=1, row=0, pady=2, padx=4, sticky=(W))
-        poolvar.set("5")
+        poolvar.set("1")
 
         self.poolmet=StringVar()
         poolcombo=ttk.Combobox(solveframe, textvariable=self.poolmet, width=6)
