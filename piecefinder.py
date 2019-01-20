@@ -54,15 +54,15 @@ class BBoxFilter(object):
         self.width=edgewidth
         self.configure(**kwargs)
 
-    def configure(self, expansion=2, borderwidth=4, border_to_grad=0.4, threshold=0.6,
+    def configure(self, expansion=2, borderwidth=4, border_to_grad=0.4, threshold=(0.4,0.8),
                         max_loss=None, max_tries=10, **kwargs):
         self.expansion=expansion
         self.borderwidth=borderwidth
         self.weights=(border_to_grad, 1-border_to_grad)
-        self.threshold=threshold
         self.max_loss=max_loss
         self.max_tries=max_tries
-        self._min_threshold=0.4
+        self.min_threshold=threshold[0]
+        self.max_threshold=threshold[1]
 
     def __call__(self, array, boxes, ref_shape=None, **kwargs):
         start=datetime.now()
@@ -73,21 +73,24 @@ class BBoxFilter(object):
         del(subarrays)
 
         if not(self.max_loss is None):
-            threshold = self.threshold
-            step = abs(threshold-self._min_threshold)/self.max_tries
-            for _ in range(self.max_tries):
+            threshold = self.min_threshold
+            step = abs(threshold-self.max_threshold)/self.max_tries
+            found_values = np.zeros((self.max_tries, 4), dtype = object)
+            for i in range(self.max_tries):
                 out_boxes, out_scores = self.threshold_filter(boxes, scores, threshold)
                 out_boxes, out_scores = self.IoA_filter(out_boxes, out_scores)
-                dims, loss = find_dims(self.average_shape(out_boxes), len(out_boxes), ref_shape)
-                if loss < self.max_loss:
-                    break
 
+                if len(out_boxes)>0:
+                    dims, loss = find_dims(self.average_shape(out_boxes), len(out_boxes), ref_shape)
+                    found_values[i] = out_boxes, out_scores, dims, loss
                 else:
-                    threshold-=step
-                    if threshold < self._min_threshold:
-                        break
-            if loss>self.max_loss:
-                raise RuntimeWarning("Failed to find adequate boxes.")
+                    found_values[i] = None, None, None, 1
+                    
+                threshold+=step
+
+            if loss > self.max_loss:
+                out_boxes, out_scores, dims = found_values[np.argmin(found_values[:,3]), 0:3]
+                #raise FindDimsFailure("Failed to find adequate boxes:" len(out_boxes))
             out=(out_boxes, out_scores, dims)
         else:
             threshold = self.threshold
@@ -178,7 +181,7 @@ class BBoxFilter(object):
         score=1/(avg_error/half_mark+1)
         return score
 
-    def contrast_score(self, array, thiccness=2, exp_scaling=3, half_mark=20):
+    def contrast_score(self, array, thiccness=2, exp_scaling=1.5, half_mark=20):
         assert thiccness>1
         assert thiccness>self.expansion
         dirs=["N", "E", "S", "W"]
@@ -190,6 +193,7 @@ class BBoxFilter(object):
 
             subscore=0
             #IMPLEMENT DECREASIN WEIGHTS
+            FIX THIS RANGE
             for i in range(self.expansion, thiccness):
                 #channel-wise absolute difference of layer intensity averages
                 lsubscore=np.absolute(base_value-border[i])
@@ -213,3 +217,7 @@ class BBoxFilter(object):
     def sample_columns(self, array, samples):
         columns = np.random.choice(array.shape[1], samples, replace=False)
         return array[:, columns]
+
+
+class FindDimsFailure(Exception):
+    pass

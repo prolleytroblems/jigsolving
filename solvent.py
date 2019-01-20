@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 from image_obj import PieceCollection, Solution
+from piecefinder import FindDimsFailure
 
 DEFAULTS = {"debug_mode":True}
 
@@ -14,6 +15,9 @@ class Solvent(object):
 
     def __init__(self):
         self.backlog = {}
+
+    def config(self, processing_functions):
+        self.processing_functions = processing_functions
 
     def load_puzzles(self, puzzle_dict):
         for scrambled in puzzle_dict:
@@ -58,9 +62,11 @@ class Solvent(object):
                 print(E)
 
     def detect(self, image, threshold=0.8, base_k=150, inc_k=150, sigma=0.8, ref_shape=None, *args, **kwargs):
-        detector = PieceFinder(threshold = threshold, max_loss=0.05, max_tries=10)
+        detector = PieceFinder(threshold = threshold, max_loss=0.01, max_tries=10)
         boxes, scores, dims = detector.find_boxes(image, base_k, inc_k, sigma, ref_shape=ref_shape)
         subimages = list(map(lambda box: get_subarray(image, box), boxes))
+        if len(boxes) ==0:
+            raise RuntimeWarning("Could not find any pieces.")
         collection = PieceCollection(subimages)
         return collection, dims
 
@@ -78,7 +84,7 @@ class Solvent(object):
         return (collection, score)
 
     def assemble(self, collection, *args, **kwargs):
-        excess = 1.1
+        excess = 1.5
         avg_shape = collection.average_shape()
         dims = collection.dims
         final_dims = (round(avg_shape[0]*dims[0]*excess), round(avg_shape[1]*dims[1]*excess))
@@ -89,15 +95,15 @@ class Solvent(object):
                 array = piece.array
                 image[locations[piece.slot][1]:locations[piece.slot][1]+array.shape[0],
                       locations[piece.slot][0]:locations[piece.slot][0]+array.shape[1]] = array
-        except ValueError as E:
-            """print("dims", dims)
+        except Exception as E:
+            print("dims", dims)
             print("avg_shape", avg_shape)
             print("final_dims", image.shape)
-            print("array shape", array.shape)"""
+            print("array shape", array.shape)
             raise E
         return image
 
-    def solve_loaded(self, out_dir, log_path=None, categories=[], constants={}, *args, **kwargs):
+    def solve_loaded(self, out_dir, log_path=None, constants={}, *args, **kwargs):
         kwargs = param_check(kwargs, DEFAULTS)
         out_dir = Path(out_dir)
         if not(out_dir.is_dir()):
@@ -105,12 +111,15 @@ class Solvent(object):
 
         if log_path is None:
             log_path = out_dir / "log.txt"
-        headers = ["Scrambled_path", "Reference_path", "Total_score"] + list(constants.keys())
+        headers = ["Scrambled_path", "Reference_path", "Total_score", "Exception"] + list(constants.keys()) + list(self.processing_functions.keys())
         appendable = list(constants.items())
         with Logger(log_path, headers) as log:
             start = datetime.now()
             for scrambled in self.backlog:
                 try:
+                    data = {}
+                    score = None
+
                     if not(scrambled.exists()):
                         raise ValueError("Does not exist: %s"%scrambled)
                     if not(self.backlog[scrambled].exists()):
@@ -122,19 +131,14 @@ class Solvent(object):
 
                     piece_count = len(collection)
 
-                    #wanted data: stdev of piece sizes,stdev of actual piece sizes,
-                    #avg piece size, actual avg piece size, color variation of original image, runtime error
-                    #type of distortion and amount, size of image
+                    for key in self.processing_functions:
+                        data[key] = self.processing_functions[key](collection.mass_get("image"), reference_image)
 
                     collection, score = self.solve(collection, reference_image, dims=dims, **kwargs)
                     out = self.assemble(collection, *args, **kwargs)
-                    log_dict = dict([("Scrambled_path", str(scrambled)),
-                                ("Reference_path", str(self.backlog[scrambled])),
-                                ("Total_score", score)] + appendable + data)
-                    log.push_line(log_dict)
+
 
                     out_path = out_dir /  scrambled.name
-                    print(out_path)
                     if str(out_path)==str(scrambled):
                         raise ValueError("Input file must be different from output directory: "+str(out_path))
                     writeimg(out_path, out)
@@ -143,9 +147,17 @@ class Solvent(object):
                     if kwargs["debug_mode"]:
                         print("Finished {!s}, score {:3.4}, time {}".format(scrambled,score,time))
 
-                except Exception as E:
-                    raise E
+                except (ValueError, FindDimsFailure, RuntimeWarning) as E:
                     print(scrambled, ": ", E)
+                    data["Exception"] = str(E)
+                    if score is None:
+                        score = 0
+
+                finally:
+                    log_dict = dict([("Scrambled_path", str(scrambled)),
+                                ("Reference_path", str(self.backlog[scrambled])),
+                                ("Total_score", score)] + list(constants.items()) + list(data.items()))
+                    log.push_line(log_dict)
 
         self.backlog={}
         log.close()
@@ -161,15 +173,15 @@ class Logger(object):
     def push_line(self, value_dict):
         for header in self.headers:
             if header in value_dict:
-                self.f.write("{!s} ".format(value_dict[header]))
+                self.f.write("{!s}, ".format(value_dict[header]))
             else:
-                self.f.write("N/A "
+                self.f.write(", ")
         self.f.write("\n")
 
     def open(self):
         self.f = open(self.path, "w")
         for header in self.headers:
-            self.f.write("{!s} ".format(header))
+            self.f.write("{!s}, ".format(header))
         self.f.write("\n")
 
     def close(self):

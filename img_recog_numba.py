@@ -6,6 +6,7 @@ from image_obj import *
 from utils import *
 from discretedarwin import DiscreteDarwin
 from pooling import *
+from random import shuffle
 
 
 DEFAULTS={"debug_mode":False, "threshold":None, "iterator_mode":False,
@@ -345,29 +346,20 @@ def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
     np.savetxt("valuearray.csv", valuearray)
     return valuearray
 
-def simple_solve(valuearray):
-    used_mask = np.zeros((valuearray.shape[1]))
-    out = [None]*valuearray.shape[1]
-    for i, row in enumerate(valuearray):
-        out[i] = np.argmax(row+used_mask)
-        used_mask[out[i]] = -2
-
-    assert not(None in out)
-    return out
 
 genalg_DEF={"generations":400, "mutate_p":0.04, "cross_p":0.13, "elitism":0.05, "selection":"tournament", "score":False, "population":100}
 
 def genalg_solve(pieces, solution, pooling=None, **params):
     genalg_params = param_check(params["genalg_params"], genalg_DEF)
-    if params["debug_mode"]:
-        print("GA: "+str(genalg_params))
+    """if params["debug_mode"]:
+        print("GA: "+str(genalg_params))"""
 
     p_pieces, p_solution = preprocess_pieces(pieces.mass_get("image"), solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
 
     dsolution = p_solution.darrays
     valuearray = get_valuearray(p_pieces, p_solution.arrays, dpieces, dsolution)
-    start = simple_solve(valuearray)
+    start = initial_chromosomes(valuearray)
     optimizer = DiscreteDarwin(valuearray, genalg_params["population"], valuearray.shape[0], start_loc=start, **genalg_params)
 
     optimizer.run(genalg_params["generations"])
@@ -386,6 +378,31 @@ def genalg_solve(pieces, solution, pooling=None, **params):
     if genalg_params["score"]:
         score = permutation.fitness
         return (out, score)
+    return out
+
+def initial_chromosomes(valuearray):
+    out = []
+
+    used_mask = np.zeros((valuearray.shape[1]))
+    perm = [None]*valuearray.shape[1]
+    for i, row in enumerate(valuearray):
+        perm[i] = np.argmax(row+used_mask)
+        used_mask[perm[i]] = -2
+    out.append(perm)
+
+    used_mask = np.zeros((valuearray.shape[1]))
+    perm = [None]*valuearray.shape[1]
+    for i, column in enumerate(valuearray.T):
+        index =np.argmax(column+used_mask)
+        perm[index] = i
+        used_mask[index] = -2
+    out.append(perm)
+
+    for i in [0,1]:
+        rand_chromosome = list(range(len(valuearray)))
+        shuffle(rand_chromosome)
+        out.append(rand_chromosome)
+
     return out
 
 def main():

@@ -98,20 +98,20 @@ class PositionPerm(Permutation):
 
 class Generation(list):
 
-    def __init__(self, chromossomes=None, cross_p=0.13, mutate_p=0.04, elitism=0.05, selection="tournament", **kwargs):
+    def __init__(self, chromosomes=None, cross_p=0.13, mutate_p=0.04, elitism=0.05, selection="tournament", **kwargs):
         self.params={"selection":selection,
                     "elitism":elitism,
                     "cross_p":cross_p,
                     "mutate_p":mutate_p}
-        if chromossomes:
-            super().__init__(chromossomes)
+        if chromosomes:
+            super().__init__(chromosomes)
         else:
             super().__init__()
         random.seed(hash(urandom(4)))
 
     def update_fitness(self):
-        for chromossome in self:
-            chromossome.refresh()
+        for chromosome in self:
+            chromosome.refresh()
 
     def next_generation(self, size=None):
         "size rounds to next largest pair"
@@ -126,8 +126,8 @@ class Generation(list):
                 pair=[self.roulette(), self.roulette()]
 
             pair=pair[0].rand_crossover(pair[1], self.params["cross_p"])
-            for chromossome in pair:
-                chro=chromossome.rand_mutate(self.params["mutate_p"])
+            for chromosome in pair:
+                chro=chromosome.rand_mutate(self.params["mutate_p"])
                 next_gen.append(chro)
         if len(next_gen)>size:
             next_gen.pop()
@@ -154,10 +154,10 @@ class Generation(list):
 
         best=sorted(population[0:n], key=lambda x:x.fitness, reverse=True)
 
-        for chromossome in population[n:]:
+        for chromosome in population[n:]:
             podium=-1
             for position in range(1, len(best)+1):
-                if chromossome.fitness>best[-position].fitness:
+                if chromosome.fitness>best[-position].fitness:
                     if len(best)<position+1:
                         podium = position
                         break
@@ -170,7 +170,7 @@ class Generation(list):
                     else:
                         break
             if podium>0:
-                best.insert(-podium, chromossome)
+                best.insert(-podium, chromosome)
                 if len(best)>n:
                     best.pop()
         return best
@@ -186,21 +186,23 @@ class DiscreteDarwin(object):
         self.initialize_pop( **kwargs)
 
     def initialize_pop(self, start_loc=None, **kwargs):
-        self.gen=Generation(**kwargs)
         if start_loc is None:
+            self.gen=Generation(**kwargs)
             for _ in range(self.pop_size):
                 self.gen.append(PositionPerm(-1, self.table, self.len))
         else:
-            mutate_p=1-0.05**(1/len(start_loc))
-            print("mutate_p",mutate_p)
-            for _ in range(self.pop_size):
-                self.gen.append(PositionPerm(start_loc, self.table, self.len).rand_mutate(mutate_p))
+            assert type(start_loc[0])==list
+            self.gen=Generation(**kwargs)
+            for loc in start_loc:
+                self.gen.append(PositionPerm(loc, self.table, self.len))
+            self.gen = self.gen.next_generation(size = self.pop_size)
 
     def advance(self):
         self.gen=self.gen.next_generation()
 
     def run(self, generations):
         #print(self.table)
+        print("Starting fitness:", self.best().fitness)
         for _ in range(generations):
             self.advance()
             """if _%10==0:
