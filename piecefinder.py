@@ -85,7 +85,7 @@ class BBoxFilter(object):
                     found_values[i] = out_boxes, out_scores, dims, loss
                 else:
                     found_values[i] = None, None, None, 1
-                    
+
                 threshold+=step
 
             if loss > self.max_loss:
@@ -182,6 +182,7 @@ class BBoxFilter(object):
         return score
 
     def contrast_score(self, array, thiccness=2, exp_scaling=1.5, half_mark=20):
+        MAKE BRIGHTNESS INVARIANT
         assert thiccness>1
         assert thiccness>self.expansion
         dirs=["N", "E", "S", "W"]
@@ -192,7 +193,7 @@ class BBoxFilter(object):
 
 
             subscore=0
-            #IMPLEMENT DECREASIN WEIGHTS
+
             FIX THIS RANGE
             for i in range(self.expansion, thiccness):
                 #channel-wise absolute difference of layer intensity averages
@@ -203,8 +204,9 @@ class BBoxFilter(object):
                 lsubscore=np.sum(lsubscore)/3
                 #scaling the intensity difference value that gives score of 0.5
                 lsubscore=lsubscore/half_mark
+                IMPLEMENT DECREASING WEIGHTS
                 #sigmoid normalization
-                #TRY DIFFERENT NORMALIZATION
+                TRY DIFFERENT NORMALIZATION - XCORR?
                 lsubscore=lsubscore/(1+lsubscore)
                 subscore+=lsubscore
             """print(subscore)

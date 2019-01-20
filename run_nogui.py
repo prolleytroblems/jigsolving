@@ -7,7 +7,7 @@ puzzle={"./tests/blur-1/puzzle.jpg": "./tests/puzzle.jpg"}
 solver.load_puzzles(puzzle)
 solver.solve_loaded(out_dir = "./tests/test/", pooling=1, generations=400, threshold =0.95)"""
 
-
+USE NOT 5x5 SPLIT
 
 folders = []
 folders += ["blur-"+str(i) for i in [1,2,3,4]]
