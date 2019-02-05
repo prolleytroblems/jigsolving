@@ -7,8 +7,7 @@ puzzle={"./tests/blur-1/puzzle.jpg": "./tests/puzzle.jpg"}
 solver.load_puzzles(puzzle)
 solver.solve_loaded(out_dir = "./tests/test/", pooling=1, generations=400, threshold =0.95)"""
 
-USE NOT 5x5 SPLIT
-
+"""
 folders = []
 folders += ["blur-"+str(i) for i in [1,2,3,4]]
 folders += ["brightness-"+str(i) for i in [25,50,75,100]]
@@ -29,11 +28,17 @@ processing_functions = {"Shape_avg_x":lambda x,y: shape_avg(x, 0), "Shape_avg_y"
 solver = Solvent()
 solver.config(processing_functions)
 
-solvelist=[("blur-", [4]), ("brightness-", [25,50,75,100]), ("gaussian-", [5,10,15,20]), ("motion-", [5,9,13,17])]
+solvelist=[("samples", [""]), ("blur-", [1,2,3,4]), ("brightness-", [25,50,75,100]), ("gaussian-", [5,10,15,20]), ("motion-", [5,9,13,17])]
 
 for distortion, devs in solvelist:
     folders=[distortion + str(i) for i in devs]
-    for folder in folders:
+    for dev, folder in zip(devs, folders):
         solver.load_dir(basepath / folder, basepath)
-        solver.solve_loaded(out_dir = basepath / ("out"+folder), pooling=1, generations=300,
-                            threshold =[0.3,0.8], max_tries=20, constants={"Distortion": "blur", "D_intensity":folder[-1]})
+        solver.solve_loaded(out_dir = basepath / ("out"+folder), pooling=1, generations=400,
+                            threshold =[0.3,0.8], max_tries=20, constants={"Distortion": "blur", "D_intensity":dev})
+"""
+
+solvelist={Path("./thesis/brighter.png"): Path("./thesis/2014-07-11 002.JPG")}
+solver = Solvent()
+solver.load_puzzles(solvelist)
+solver.solve_loaded(out_dir="./handmade", pooling=1, generations=400, threshold =[0.3,0.8], max_tries=40)

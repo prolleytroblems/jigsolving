@@ -7,7 +7,7 @@ from pathlib import Path
 
 def make_base(path):
     genner = ImageSplitter(txtpath = str(Path(path) / "truthvalues.json"))
-    genner.gen_all(path, dims = (5,5))
+    genner.gen_all(path, dims = (4,6))
     genner.close()
 
 
@@ -39,5 +39,5 @@ def make_all_dist(path):
         make_distort(path, path.parent/str("gaussian-"+str(dev)+"/"), d_funcs["gaussian"], dev)
 
 if __name__ == "__main__":
-    make_base("./images/")
-    make_all_dist("./images/samples")
+    make_base("./tests/")
+    make_all_dist("./tests/samples")

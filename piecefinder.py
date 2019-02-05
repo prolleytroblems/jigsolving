@@ -61,8 +61,11 @@ class BBoxFilter(object):
         self.weights=(border_to_grad, 1-border_to_grad)
         self.max_loss=max_loss
         self.max_tries=max_tries
-        self.min_threshold=threshold[0]
-        self.max_threshold=threshold[1]
+        if isinstance(threshold, float):
+            self.max_threshold = threshold
+        else:
+            self.min_threshold=threshold[0]
+            self.max_threshold=threshold[1]
 
     def __call__(self, array, boxes, ref_shape=None, **kwargs):
         start=datetime.now()
@@ -93,7 +96,7 @@ class BBoxFilter(object):
                 #raise FindDimsFailure("Failed to find adequate boxes:" len(out_boxes))
             out=(out_boxes, out_scores, dims)
         else:
-            threshold = self.threshold
+            threshold = self.max_threshold
             boxes, scores = self.threshold_filter(boxes, scores, threshold)
             out = self.IoA_filter(boxes, scores)
 
@@ -182,7 +185,6 @@ class BBoxFilter(object):
         return score
 
     def contrast_score(self, array, thiccness=2, exp_scaling=1.5, half_mark=20):
-        MAKE BRIGHTNESS INVARIANT
         assert thiccness>1
         assert thiccness>self.expansion
         dirs=["N", "E", "S", "W"]
@@ -194,20 +196,21 @@ class BBoxFilter(object):
 
             subscore=0
 
-            FIX THIS RANGE
-            for i in range(self.expansion, thiccness):
+            for i in range(thiccness-self.expansion, thiccness):
                 #channel-wise absolute difference of layer intensity averages
                 lsubscore=np.absolute(base_value-border[i])
                 #avg of absolute differences for each channel
                 lsubscore=np.sum(lsubscore, axis=0)/lsubscore.shape[0]
                 #average accross channels
                 lsubscore=np.sum(lsubscore)/3
+
                 #scaling the intensity difference value that gives score of 0.5
-                lsubscore=lsubscore/half_mark
-                IMPLEMENT DECREASING WEIGHTS
+                lsubscore=lsubscore/(half_mark/3**0.5)
+                #lsubscore=lsubscore/half_mark
+
                 #sigmoid normalization
-                TRY DIFFERENT NORMALIZATION - XCORR?
-                lsubscore=lsubscore/(1+lsubscore)
+                lsubscore=lsubscore/(1+lsubscore**2)**0.5
+                #lsubscore=lsubscore/(1+lsubscore)
                 subscore+=lsubscore
             """print(subscore)
             cv2.imshow("YOLO", cv2.resize(border, None, fx=1, fy=10))

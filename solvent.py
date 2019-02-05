@@ -15,6 +15,7 @@ class Solvent(object):
 
     def __init__(self):
         self.backlog = {}
+        self.processing_functions = {}
 
     def config(self, processing_functions):
         self.processing_functions = processing_functions
