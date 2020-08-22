@@ -4,9 +4,13 @@ import numpy as np
 import cv2
 from image_obj import *
 from utils import *
+from discretedarwin import DiscreteDarwin
+from pooling import *
+from random import shuffle
 
 
-DEFAULTS={"debug_mode":False, "threshold":None, "iterator_mode":False, "method":"xcorr", "id_only":True}
+DEFAULTS={"debug_mode":False, "threshold":None, "iterator_mode":False,
+          "method":"xcorr", "id_only":True, "genalg_params":{}}
 
 @cuda.jit(device=True)
 def compare_pixel(pixela, pixelb):
@@ -14,7 +18,6 @@ def compare_pixel(pixela, pixelb):
     for i in range(3):
         c+=(pixela[i]-pixelb[i])**2
     return c**0.5
-
 
 @cuda.jit
 def gcompare(imga, imgb, C):
@@ -24,12 +27,10 @@ def gcompare(imga, imgb, C):
 
     C[y,x]=compare_pixel(imga[y,x], imgb[y,x])
 
-
 @cuda.jit(device=True)
 def compare_xcorr_color(colora, colorb, means):
     c=(colora-means[0])*(colorb-means[1])
     return c
-
 
 @cuda.jit
 def gcompare_xcorr(imga, imgb, means, C, weights):
@@ -38,7 +39,6 @@ def gcompare_xcorr(imga, imgb, means, C, weights):
         return
     for i in range(3):
         C[y,x,i]=compare_xcorr_color(imga[y,x,i], imgb[y,x,i], means[:,i]) * weights[i]
-
 
 def compare(dimga, dimgb, **params):
     tpb = 16
@@ -49,8 +49,7 @@ def compare(dimga, dimgb, **params):
 
     gcompare[(bpgy, bpgx), (tpb, tpb)](dimga, dimgb, C)
 
-    return 1-np.sum(C)/(dimga.shape[0]*dimga.shape[1]*442)
-
+    return 1-np.sum(C)/(dimga.shape[0]*dimga.shape[1]*441.7)
 
 def statistics(array):
     means=[]
@@ -59,7 +58,6 @@ def statistics(array):
         means.append(array[:,:,i].mean())
         stds.append(array[:,:,i].std())
     return (means, stds)
-
 
 def compare_xcorr(imga, imgb, dimga, dimgb, weights=np.array((1,1,1), dtype=np.float32), **params):
 
@@ -84,7 +82,6 @@ def compare_xcorr(imga, imgb, dimga, dimgb, weights=np.array((1,1,1), dtype=np.f
             xcorr.append(np.sum( C[:,:,i]) / ( div + 0.00001 ))
 
     return sum(xcorr)/3
-
 
 def locate_one_piece(dpiece, solution, **params):
     """Will only receive preprocessed device arrays!"""
@@ -133,8 +130,7 @@ def locate_one_piece(dpiece, solution, **params):
 
     return solution.locations[max_resemblance[1]]
 
-
-def preprocess_pieces(pieces, solution, pooling=None, **params):
+def preprocess_pieces_old(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 
     if params["debug_mode"]==True:
@@ -158,43 +154,29 @@ def preprocess_pieces(pieces, solution, pooling=None, **params):
 
     return (pieces, solution)
 
+def preprocess_pieces(images, solution, pooling=None, **params):
+    params=param_check(params, DEFAULTS)
 
-def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
-    valuearray=np.zeros((len(dpieces), len(dpieces)))
-    for i in range(len(dsolution)):
-        for j in range(len(dpieces)):
-            #valuearray[i, j] = compare(dsolution[i], dpieces[j], decoding="sort", **params)**2
-            valuearray[i, j] = compare_xcorr(solutionpieces[i], pieces[j], dsolution[i], dpieces[j], decoding="sort", **params)**3
-    np.savetxt("valuearray.csv", valuearray)
-    return valuearray
-
-
-def particle_solve(pieces, solution, pooling=None, **params):
-    p_pieces, p_solution = preprocess_pieces(pieces, solution, pooling, **params)
-    dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
-    dsolution = p_solution.darrays
-    valuearray = get_valuearray(p_pieces, p_solution.arrays, dpieces, dsolution)
-    optimizer = PermutationOptimizer(len(pieces)*5, valuearray, mass=1.15, lrate=(1, 1), decoding="sort")
-    oldbest=None
-    i=0
-    while True:
-        best=optimizer.get_fitness()
-        print(i, best)
-        if not(oldbest):
-            oldbest=best
-        for _ in range(20):
-            optimizer.step()
-        if oldbest==best:
-            i+=1
-            if i>30:
-                break
+    if params["debug_mode"]==True:
+        start=datetime.now()
+    target_shape=solution.arrays.shape[1:]
+    target_size=(target_shape[1], target_shape[0])
+    pieces=[]
+    for array in images:
+        if array.shape != target_shape:
+            pieces.append(cv2.resize(array, target_size))
         else:
-            i=0
-        oldbest=best
-    permutation=optimizer.get()
-    solved=reassemble([pieces[index] for index in permutation], solution.shape)
-    return solved
+            pieces.append(array)
+    pieces=np.array(pieces)
 
+    if pooling != None and pooling != 1:
+        pieces=pool(pieces, (pooling, pooling), (pooling, pooling), **params)
+        solution=pool(solution, (pooling, pooling), (pooling, pooling), **params)
+
+    if params["debug_mode"]==True:
+        print("Preprocessing: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
+
+    return (pieces, solution)
 
 def find_match(dto_match, dpieces, availability=None, mask=None, **params):
     """Will only receive preprocessed device arrays! \n
@@ -255,13 +237,11 @@ def find_match(dto_match, dpieces, availability=None, mask=None, **params):
 
     return max_resemblance[1]
 
-
 def resize_batch(pieces, size, **params):
     resized=[]
     for piece in pieces:
         resized.append(cv2.resize(piece, size))
     return np.array(resized)
-
 
 def locate_pieces_iter(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
@@ -283,11 +263,10 @@ def locate_pieces_iter(pieces, solution, pooling=None, **params):
         else:
             yield((piece[index].id, p_solution.locations[i]))
 
-
 def locate_pieces(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 
-    p_pieces, p_solution = preprocess_pieces(np.asarray(pieces.mass_get("image")), solution, pooling, **params)
+    p_pieces, p_solution = preprocess_pieces(pieces.mass_get("image"), solution, pooling, **params)
     dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
 
     out=[]
@@ -306,7 +285,7 @@ def locate_pieces(pieces, solution, pooling=None, **params):
         index=find_match(p_solution.darrays[i], dpieces, availability=p_solution.availability, mask=piece_mask, **params)
         piece_mask[index]=False
         piece_locations[index]=p_solution.slots[i]
-        
+
     assert not(any(i is -1 for i in piece_locations))
     if not(params["id_only"]):
         pieces.mass_set("slot", piece_locations)
@@ -318,27 +297,30 @@ def full_solve(pieces, solution, pooling=None, **params):
     params=param_check(params, DEFAULTS)
 
     if params["debug_mode"]:
+        print("-----Solving-----")
         start=datetime.now()
 
-    if not(params["iterator_mode"]):
-        if not(params["id_only"]):
-            solved=locate_pieces(pieces, solution, pooling=pooling, **params)
-            solved=PieceCollection(solved, find_dims())
-        else:
-            solved=locate_pieces(pieces, solution, pooling=pooling, **params)
+    if params["method"]=="genalg(xcorr)":
+        solved=genalg_solve(pieces, solution, pooling=pooling, **params)
     else:
-        raise NotImplementedError("iterator solve not properly implemented")
-        solved=locate_pieces_iter(pieces, solution, pooling=pooling, **params)
+        if not(params["iterator_mode"]):
+            if not(params["id_only"]):
+                solved=locate_pieces(pieces, solution, pooling=pooling, **params)
+                solved=PieceCollection(solved, pieces.dims)
+            else:
+                solved=locate_pieces(pieces, solution, pooling=pooling, **params)
+        else:
+            raise NotImplementedError("iterator solve not properly implemented")
+            solved=locate_pieces_iter(pieces, solution, pooling=pooling, **params)
 
     if params["debug_mode"]:
-        if params["iterator"]==True:
+        if params["iterator_mode"]==True:
             print("Iterator mode: True")
         else:
             print("Iterator mode: False")
         print("Solving: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
 
     return solved
-
 
 def sort_pieces(located_pieces, dims):
     sorted_pieces=[[0 for column in range(dims[1])] for row in range(dims[0])]
@@ -347,121 +329,84 @@ def sort_pieces(located_pieces, dims):
 
     return [piece for row in sorted_pieces for piece in row]
 
-
-def reassemble(pieces, dims):
-    """Reassembles ordered piece images into a full image"""
-    pieces=np.array(pieces)
-    if not(len(pieces.shape)==4): raise TypeError("pieces must be a 4-dimensional ndarray-like object")
-    if not(isinstance(dims, tuple) and len(dims)==2): raise TypeError("dims not legible as tuple")
-    image=np.concatenate([np.concatenate(pieces[i*dims[1]:(i+1)*dims[1]], axis=1) for i in range(dims[0])], axis=0)
-    return image
-
-
-def find_dims():
-    raise NotImplementedError()
-
-
-@cuda.jit
-def max_pool_unit(image, pooling, stride, pooled):
-    y, x=cuda.grid(2)
-
-    if y>pooled.shape[0] or x>pooled.shape[1]:
-        return
-    window=image[y*stride[1]:y*stride[1]+pooling[1], x*stride[0]:x*stride[0]+pooling[0], :]
-
-    pooled[y,x,0]=0
-    pooled[y,x,1]=0
-    pooled[y,x,2]=0
-
-    for i in range(pooling[0]):
-        for j in range(pooling[1]):
-            if window[i,j,0]>pooled[y,x,0]:
-                pooled[y,x,0]=window[i,j,0]
-            if window[i,j,1]>pooled[y,x,1]:
-                pooled[y,x,1]=window[i,j,1]
-            if window[i,j,2]>pooled[y,x,2]:
-                pooled[y,x,2]=window[i,j,2]
+def get_valuearray(pieces, solutionpieces, dpieces, dsolution, **params):
+    "Rows are reference locations, columns are pieces."
+    valuearray=np.zeros((len(dpieces), len(dpieces)))
+    """for i in range(5):
+        cv2.imshow("", pieces[i])
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        cv2.imshow("", solutionpieces[i])
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()"""
+    for i in range(len(dsolution)):
+        for j in range(len(dpieces)):
+            #valuearray[i, j] = compare(dsolution[i], dpieces[j], decoding="sort", **params)**2
+            valuearray[i, j] = compare_xcorr(solutionpieces[i], pieces[j], dsolution[i], dpieces[j], **params)
+    np.savetxt("valuearray.csv", valuearray)
+    return valuearray
 
 
-def pool(images_or_solution, pooling, stride, **params):
-    params=param_check(params, DEFAULTS)
+genalg_DEF={"generations":400, "mutate_p":0.04, "cross_p":0.13, "elitism":0.05, "selection":"tournament", "score":False, "population":100}
 
-    if params["debug_mode"]==True:
-        start=datetime.now()
+def genalg_solve(pieces, solution, pooling=None, **params):
+    genalg_params = param_check(params["genalg_params"], genalg_DEF)
+    """if params["debug_mode"]:
+        print("GA: "+str(genalg_params))"""
 
-    if isinstance(images_or_solution, np.ndarray):
-        pooled=[]
-        for image in images_or_solution:
-            pooled.append(pool_image(image, pooling, stride, **params))
-        if params["debug_mode"]==True:
-            print("Pooling images: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
-        return np.array(pooled, dtype=np.uint8)
+    p_pieces, p_solution = preprocess_pieces(pieces.mass_get("image"), solution, pooling, **params)
+    dpieces = cuda.to_device(np.ascontiguousarray(p_pieces))
 
-    elif isinstance(images_or_solution, Solution):
-        dims=images_or_solution.shape
-        images_or_solution = images_or_solution.arrays
-        pooled=[]
-        for image in images_or_solution:
-            pooled.append(pool_image(image, pooling, stride, **params))
-        if params["debug_mode"]==True:
-            print("Pooling solution: "+str((datetime.now()-start).seconds*1000+float((datetime.now()-start).microseconds)/1000)+" ms")
-        return Solution(np.array(pooled, dtype=np.uint8), dims)
+    dsolution = p_solution.darrays
+    valuearray = get_valuearray(p_pieces, p_solution.arrays, dpieces, dsolution)
+    start = initial_chromosomes(valuearray)
+    optimizer = DiscreteDarwin(valuearray, genalg_params["population"], valuearray.shape[0], start_loc=start, **genalg_params)
 
-    else: raise TypeError("images_or_solution must be an ndarray or Solution instance")
+    optimizer.run(genalg_params["generations"])
+    permutation=optimizer.best()
 
+    piece_locations=[-1]*len(pieces)
+    for location_index, piece_index in enumerate(permutation):
+        piece_locations[piece_index]=p_solution.slots[location_index]
 
-def pool_image(image, pooling, stride, **params):
-    """Apply pooling to a single image. \n
-        image    ndarray \n
-        pooling  tuple of int of len=2 \n
-        stride   tuple of int of len=2 \n """
+    if not(params["id_only"]):
+        pieces.mass_set("slot", piece_locations)
+        out = pieces
+    else:
+        out = (list(zip(pieces.mass_get("id"), piece_locations)))
 
-    if not(pooling[0]>=stride[0] and pooling[1]>=stride[1]): raise TypeError("Pooling and stride inputs should be ndarray-like")
-    if not(len(image.shape)==3): raise TypeError("Image must be a 3D ndarray.")
+    if genalg_params["score"]:
+        score = permutation.fitness
+        return (out, score)
+    return out
 
-    pooling=np.array(pooling, dtype=np.uint8)
-    stride=np.array(stride, dtype=np.uint8)
+def initial_chromosomes(valuearray):
+    out = []
 
-    def add_padding(image, axis, side="end"):
-        assert axis==0 or axis==1
-        if (image.shape[axis]-pooling[axis]+stride[axis])%stride[axis]==0:
-            return image
-        else:
-            #add a blank row/column
-            coeff=[0,0]
-            coeff[-axis+1]=1
-            if side=="end":
-                image=np.concatenate((image, np.zeros(((image.shape[0]-1)*coeff[0]+1,
-                        (image.shape[1]-1)*coeff[1]+1, 3), dtype=np.uint8)), axis=axis)
-                image=add_padding(image, axis, side="start")
-            elif side=="start":
-                image=np.concatenate((np.zeros(((image.shape[0]-1)*coeff[0]+1,
-                        (image.shape[1]-1)*coeff[1]+1, 3), dtype=np.uint8), image), axis=axis)
-                image=add_padding(image, axis, side="end")
-            return image
+    used_mask = np.zeros((valuearray.shape[1]))
+    perm = [None]*valuearray.shape[1]
+    for i, row in enumerate(valuearray):
+        perm[i] = np.argmax(row+used_mask)
+        used_mask[perm[i]] = -2
+    out.append(perm)
 
-    for axis in range(2):
-        image=add_padding(image, axis, "end")
+    used_mask = np.zeros((valuearray.shape[1]))
+    perm = [None]*valuearray.shape[1]
+    for i, column in enumerate(valuearray.T):
+        index =np.argmax(column+used_mask)
+        perm[index] = i
+        used_mask[index] = -2
+    out.append(perm)
 
-    final_dims=((image.shape[0]-pooling[0]+stride[0])//stride[0], (image.shape[1]-pooling[1]+stride[1])//stride[1], 3)
-    tpb=16
-    bpgy=(final_dims[0]-1)//tpb+1
-    bpgx=(final_dims[1]-1)//tpb+1
+    for i in [0,1]:
+        rand_chromosome = list(range(len(valuearray)))
+        shuffle(rand_chromosome)
+        out.append(rand_chromosome)
 
-    dimage=cuda.to_device(np.ascontiguousarray(image))
-    pooled=np.array(np.zeros(final_dims), dtype=np.uint8)
-    dpooled=cuda.to_device(pooled)
-
-    max_pool_unit[(bpgy, bpgx), (tpb, tpb)](dimage, pooling, stride, dpooled)
-
-    dpooled.to_host()
-
-    return pooled
-
+    return out
 
 def main():
     pass
-
 
 if __name__ == '__main__':
     main()

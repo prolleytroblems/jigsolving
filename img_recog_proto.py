@@ -4,39 +4,12 @@ from random import sample, random
 from numba import cuda, guvectorize
 import math
 from utils import *
+from filters import *
 
-
-def img_split(image_or_path, dims):
-    "Splits an image into rectangular, equally-sized pieces. Returns a list, not an ndarray."
-    if isinstance(image_or_path, str):
-        image=openimg(image_or_path)
-    elif isinstance(image_or_path, np.ndarray):
-        if len(image_or_path.shape)==3:
-            image=image_or_path
-        else:
-            raise TypeError("image_or_path must be of type str or np.ndarray")
-    else:
-        raise TypeError("image_or_path must be of type str or np.ndarray")
-
-    assert isinstance(dims, tuple)
-
-    pieces=[]
-    height=image.shape[0]/dims[0]
-    width=image.shape[1]/dims[1]
-    for y_split in range(dims[0]):
-        for x_split in range(dims[1]):
-            x_start=int(x_split*width)
-            x_end=x_start+int(width)
-            y_start=int(y_split*height)
-            y_end=y_start+int(height)
-
-            pieces.append(np.array(image[y_start: y_end, x_start: x_end]))
-    return pieces
 
 
 def _raw_shuffle(image, dims):
     return sample(img_split(image, dims), dims[0]*dims[1])
-
 
 def shuffle(images, dims, prev_dims):
     """Shuffle the image into equal rectangular pieces"""
@@ -52,19 +25,24 @@ def shuffle(images, dims, prev_dims):
     else:
         raise TypeError("Array is not legible as image.")
 
-
 def distort(image, delta, distortion):
     if not(len(np.array(image.shape))==3): raise TypeError("Array is not legible as image")
-    if distortion=="n":
-        return b_distort(image, np.float32(delta))
-    if distortion=="s":
-        return s_distort(image, delta)
+    if distortion=="g":
+        return b_distort_r(image, np.float32(delta))
+    elif distortion=="c":
+        return c_distort(image, delta)
+    elif distortion=="b":
+        return b_distort_f(image, np.uint8(delta))
+    elif distortion=="m":
+        return m_distort(image, delta)
+    elif distortion=="bl":
+        return bl_distort(image, delta)
     else:
         raise Exception("Not implemented!")
 
-
 @guvectorize("(uint8[:], float32, uint8[:])","(m),()->(m)")
-def b_distort(pixel, delta, res):
+def b_distort_r(pixel, delta, res):
+    "Gaussian noise."
     change=int(nrand(0, delta))
     for i in range(3):
         value=pixel[i]+change
@@ -75,9 +53,21 @@ def b_distort(pixel, delta, res):
         else:
             res[i]=value
 
+@guvectorize("(uint8[:], uint8, uint8[:])","(m),()->(m)")
+def b_distort_f(pixel, delta, res):
+    "Fixed brightness change."
+    change=int(delta)
+    for i in range(3):
+        value=pixel[i]+change
+        if value>255:
+            res[i]=255
+        elif value<0:
+            res[i]=0
+        else:
+            res[i]=value
 
-def s_distort(image, delta):
-    """Randomly alter the shape of an image"""
+def c_distort(image, delta):
+    """Randomly slide image"""
     def move_one(image, axis, side="end"):
         assert axis==0 or axis==1
         #add a blank row/column
@@ -105,16 +95,17 @@ def s_distort(image, delta):
 
     return image
 
+def bl_distort(image, delta):
+    """Gaussian blur."""
+    return gaussian_blur(image, stddev=delta, kernel_size=(int(delta)*2+1, int(delta)*2+1))
 
-def ub_distribution(image, delta, fixed_points):
-    """Randomly alter the brightness of an image as a whole."""
-    pass
-
+def m_distort(image, delta):
+    """Motion blur."""
+    return motion_blur(image, direction=int(360*random()), kernel_size=int(delta)*2+1)
 
 def c_distort(image, delta):
     """Randomly alter the color vector of each pixel of an image following a normal distribution."""
     pass
-
 
 def ub_distribution(image, delta, fixed_points):
     """Randomly alter the color of an image as a whole."""

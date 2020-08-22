@@ -1,14 +1,15 @@
 from numba import cuda
 import numpy as np
 from img_recog_proto import img_split, shuffle, distort
-from utils import find_plot_locations
+from utils import find_plot_locations, get_subarray, img_split
+from functools import reduce
 
 
 class Solution(object):
     def __init__(self, path_or_arrays, dims):
         if isinstance(path_or_arrays, np.ndarray) and len(path_or_arrays.shape)==4:
             self.arrays=path_or_arrays
-        elif isinstance(path_or_arrays, str):
+        elif isinstance(path_or_arrays, str) or len(path_or_arrays.shape)==3:
             self.arrays = np.array(img_split(path_or_arrays, dims))
         else:
             try:
@@ -35,19 +36,23 @@ class Piece(object):
     def __get__():
         return self.array
 
+    def get_subimage(self, box):
+        return get_subarray(self.array, box)
+
 
 class PieceCollection:
-
-    def __init__(self, pieces_or_images, dims):
+    
+    def __init__(self, pieces_or_images, dims=None):
         if isinstance(pieces_or_images[0], np.ndarray):
             images=pieces_or_images
-            if len(np.array(images).shape)==4:
-                assert dims[0]*dims[1]==len(images)
-            elif len(np.array(images).shape)==3:
-                assert dims[0]*dims[1]==1
-                images=[images]
-            else:
-                raise Exception("Invalid image object")
+            if not(dims is None):
+                if len(images[0].shape)==3:
+                    assert dims[0]*dims[1]==len(images)
+                elif len(np.array(images).shape)==3:
+                    assert dims[0]*dims[1]==1
+                    images=[images]
+                else:
+                    raise Exception("Invalid image object")
             self._pieces=[Piece(image) for image in images]
             self.dims=dims
         elif isinstance(pieces_or_images[0], Piece):
@@ -100,6 +105,8 @@ class PieceCollection:
                 piece.slot=value
                 self.slot_dict[value]=piece
             self.sort()
+        else:
+            raise Exception("This attribute does not exist.")
 
     def mass_get(self, attr):
         if attr=="id":
@@ -116,6 +123,8 @@ class PieceCollection:
             if self._invalid_slots:
                 raise Exception()
             return([piece.slot for piece in self._pieces])
+        else:
+            raise Exception("This attribute does not exist.")
 
     def shuffle_collection(self, dims):
         images=np.array(self.mass_get("image"))
@@ -126,6 +135,12 @@ class PieceCollection:
         for piece in self._pieces:
             piece.array = distort(piece.array, delta, mode)
         return self
+
+    def average_shape(self, type="image"):
+        "Type should be 'plotted' or 'image'."
+        shapes=list(map(lambda x: x.shape[0:2], self.mass_get(type)))
+        shapes=reduce(lambda x, y:(x[0]+y[0], x[1]+y[1]), shapes)
+        return (shapes[0]/len(self), shapes[1]/len(self))
 
     def __len__(self):
         return len(self._pieces)

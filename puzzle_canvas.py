@@ -28,10 +28,16 @@ class PuzzleCanvas(Canvas):
             self.width=params["width"]
 
 
-    def clear(self):
-        for ID in self.find_all():
-            self.delete(ID)
-        self.objects={}
+    def clear(self, type="all"):
+        if type=="all":
+            for ID in self.find_all():
+                self.delete(ID)
+            self.objects={}
+        else:
+            for ID in self.find_all():
+                if self.objects[ID]==type:
+                    self.delete(ID)
+                    del(self.objects[ID])
 
 
     def plot_pieces(self, collection, centers, **params):
@@ -85,6 +91,7 @@ class PuzzleCanvas(Canvas):
         assert isinstance(collection, PieceCollection)
 
         try:
+            scaling = params["scaling"]
             self.resize_by_scaling(collection, scaling)
         except:
             scaling = self.resize_to_usage(collection)
@@ -92,7 +99,10 @@ class PuzzleCanvas(Canvas):
         centers = collection.mass_get("location")
         self.plot_pieces(collection, centers, **params)
 
-        return scaling
+        try:
+            return scaling
+        except:
+            pass
 
 
     def replot(self):
@@ -153,10 +163,13 @@ class PuzzleCanvas(Canvas):
 
 
     def update(self, id_slots):
-        slots=[pair[1] for pair in id_slots]
-        locations=[self.collection.get(slot=slot).location for slot in slots]
+        slots=list(map(lambda x: x[1], id_slots))
+        shape=self.collection.average_shape(type="plotted")
+        dims=self.collection.dims
+
+        locations = location_grid(shape, dims, (self.size[0]//2, self.size[1]//2))
         for i in range(len(id_slots)):
-            self._move_piece_to_target(id_slots[i][0], locations[i])
+            self._move_piece_to_target(id_slots[i][0], locations[id_slots[i][1]])
 
         self.collection.mass_set("slot", slots)
 
@@ -174,7 +187,24 @@ class PuzzleCanvas(Canvas):
             pass
 
 
-    def plot_rectangles(self, rectangle_list):
-        for box in rectangle_list:
-            ID = self.create_rectangle(box[0], box[1], box[0]+box[2], box[0]+box[3], outline="red")
+    def plot_rectangles(self, rectangle_list, scaling):
+        def rescale(box):
+            new_box = (box[0]*scaling + self.center[0] - self.usage[0]/2,
+                       box[1]*scaling + self.center[1] - self.usage[1]/2,
+                       box[2]*scaling, box[3]*scaling)
+            return new_box
+
+        rectangle_list=list(map(rescale, rectangle_list))
+        for i, box in enumerate(rectangle_list):
+            ID = self.create_rectangle(box[0], box[1], box[0]+box[2], box[1]+box[3], outline="red", width=2)
             self.objects[ID] = "rectangle"
+
+
+    def boxes_to_centers(self, boxes, image_center, scaling):
+        def box_to_center (box):
+            center = ( box[0]+box[2]/2, box[1]+box[3]/2 )
+            center = ( center[0]-image_center[0], center[1]-image_center[1] )
+            center = ( center[0]*scaling, center[1]*scaling)
+            return ( center[0]+self.center[0], center[1]+self.center[1] )
+
+        return list(map(box_to_center, boxes))
